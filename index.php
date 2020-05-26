@@ -1,3 +1,6 @@
+<?php
+    require 'lib.inc.php';
+?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -27,5 +30,8 @@
                 </div>
             </div>
         </nav>
+        <?php
+            echo ShowAllBooks();
+        ?>
     </body>
 </html>

@@ -1,3 +1,10 @@
+<?php
+    if(session_status() == PHP_SESSION_NONE){
+        session_start(); 
+    }
+
+    require 'lib.inc.php';
+?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -13,7 +20,7 @@
             <input type="text" name="tbxLoginNickname" placeholder="Entrez votre pseudo">
             <label>Mot de passe</label>
             <input type="password" name="tbxLoginPassword" placeholder="Entrez votre mot de passe">
-            <input type="submit" name="btnLogin" value="Login">
+            <input type="submit" name="btnLogin" value="Connexion">
             <a href="register.php">s'inscrire</a>
             <?php
                 if(isset($_SESSION["msg"])) { echo $_SESSION["msg"]; }

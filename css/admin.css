@@ -1,0 +1,28 @@
+form{
+    text-align: center;
+    margin: auto;
+    margin-top: 2%;
+    padding: 1%;
+    width: 20%;
+}
+
+input{
+    margin: auto;
+    margin-bottom: 4%;
+    display: block;
+}
+
+input[type="submit"]{
+    width: 28%;
+    height: 28px;
+}
+
+textarea{
+    height: 10vh;
+    resize: none;
+}
+
+.inputInsertBook{
+    margin-bottom: 3%;
+    width: 70%;
+}

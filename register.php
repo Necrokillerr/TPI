@@ -1,3 +1,10 @@
+<?php
+    if(session_status() == PHP_SESSION_NONE){
+        session_start(); 
+    }
+
+    require 'lib.inc.php';
+?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>

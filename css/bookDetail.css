@@ -1,0 +1,61 @@
+.allDescContainer{
+    border: solid 1px red;
+    margin: auto;
+    display: block;
+    margin-bottom: 4%;
+    width: 40%;
+    height: 50.2vh;
+}
+
+.imgBook{
+    border: solid 1px green;
+    display: inline-block;
+    width: 15vw;
+    height: 50vh;
+}
+
+img{
+    margin-left: -26%;
+    margin-left: 1.2%;
+    width: 14vw;
+    height: 50vh;
+}
+
+.descContainer{
+    border: solid 1px green;
+    float: right;
+    width: 22vw;
+    height: 20vh;
+}
+
+.summary{
+    border: solid 1px pink;
+    float: right;
+    width: 20vw;
+    height: 20vh;
+}
+
+/*
+.UserComment{
+    border: 1px solid;
+    padding: 10px;
+    box-shadow: 2px 4px;
+    border-radius: 10px;
+    margin-top: 1%;
+    margin-left: 43%;
+    text-align: left;
+    width: 28%;
+    height: auto;
+}
+
+input[name="comment"]{
+    width: 26%;
+    height: 60px;
+}
+
+input[name="postComment"]{
+    width: 3%;
+    height: 40px;
+    margin-left: 1%;
+}
+*/
