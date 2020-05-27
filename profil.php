@@ -22,11 +22,11 @@
         ?>
         <h2>Critiques en attente de validation</h2>
         <?php
-            echo ProfilDetailsForm();
+            echo ShowNotValidReview();
         ?>
         <h2>Vos critiques</h2>
         <?php
-            echo ProfilDetailsForm();
+            echo ShowValidReview();
         ?>
     </body>
 </html>

@@ -94,7 +94,31 @@ function InsertUser($pseudo, $email, $password){
  */
 function GetAllBooks(){
     $db = ConnectDB();
-    $sql = $db->prepare("SELECT `isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM books"); 
+    // Filtre par ordre alphabétique
+/*  if(isset($_SESSION["sortMovies"]) && $_SESSION["sortMovies"] == "ABC"){
+        $sql = $db->prepare("SELECT idmovies, movLocalLink, movName FROM movies ORDER BY movName ASC");
+    }
+    // Filtre par les mieux notés
+    else if(isset($_SESSION["sortScore"]) && $_SESSION["sortScore"] == "SCORE"){
+        $sql = $db->prepare("SELECT movies.idmovies, movLocalLink, movName, Note FROM movies 
+            JOIN usershasnote 
+                ON movies.idmovies = usershasnote.idmovies
+            ORDER BY Note DESC;");
+    }
+    // Filtre par genre
+    else if(isset($_SESSION["sortMovies"]) && $_SESSION["sortMovies"] != null){
+        $sql = $db->prepare('SELECT movies.idmovies, movLocalLink, movName FROM `movies`
+            JOIN `movieshasgenre`
+                ON movies.idmovies = movieshasgenre.idmovies
+            JOIN `genre`
+                ON movieshasgenre.idgenre = genre.idgenre
+            WHERE genre.genre = "'.$_SESSION["sortMovies"].'"');
+    }
+    // Sans filtre
+    else{
+*/
+        $sql = $db->prepare("SELECT `isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM books");
+    //}
     $sql->execute();
     $result = $sql->fetchAll(PDO::FETCH_ASSOC);
     return $result;
@@ -267,6 +291,42 @@ function addReview($review, $score){
     return true;
 }
 
+/**
+ * Récupère les critiques du livre validé par l'administrateur
+ * 
+ * Retourne un tableau
+ */
+function GetValidReviewOfBook(){
+    $db = ConnectDB();
+    $sql = $db->prepare('SELECT `date`, `content`, `mark`, `pseudo`, reviews.`isbn`, `title` FROM reviews 
+        JOIN books
+            ON books.isbn = reviews.isbn
+        WHERE isValid = 1 AND reviews.isbn = :id');
+        $sql->bindParam(':id', $_GET["id"]);
+    $sql->execute();
+    $result = $sql->fetchAll(PDO::FETCH_ASSOC);   
+    return $result;
+}
+
+/**
+ * Affiche les critiques du livre récupéré par GetValidReview()
+ * 
+ * Retourne de l'HTML
+ */
+function ShowValidReviewOfBook(){
+    $validReview = GetValidReviewOfBook();
+    $review = null;
+    foreach ($validReview as $key => $value) {
+        $review .= <<<EX
+        <div class="UserReview">
+            <h3><a href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a></h3>
+            <p>{$value["content"]}</p>
+        </div>
+EX;
+    }
+    return $review;
+}
+
 // ----------------------------------------------------------------------------------------------------------
 // ---------------------------------------- PAGE PROFIL (profil.php) ----------------------------------------
 // ----------------------------------------------------------------------------------------------------------
@@ -371,13 +431,13 @@ function UpdatePasswordForm(){
 }
 
 /**
- * Récupère les livres non validé par l'administrateur
+ * Récupère les critiques non validé par l'administrateur
  * 
  * Retourne un tableau
  */
 function GetNotValidReview(){
     $db = ConnectDB();
-    $sql = $db->prepare('SELECT `date`, `content`, `mark`, `pseudo`, `title` FROM reviews 
+    $sql = $db->prepare('SELECT `idReview`, `date`, `content`, `mark`, `pseudo`, reviews.`isbn`, `title` FROM reviews 
         JOIN books
             ON books.isbn = reviews.isbn
         WHERE isValid = 0');
@@ -387,13 +447,36 @@ function GetNotValidReview(){
 }
 
 /**
- * Récupère les livres validé par l'administrateur
+ * Affiche les critiques récupéré par GetNotValidReview()
+ * 
+ * Retourne de l'HTML
+ */
+function ShowNotValidReview(){
+    $notValidReview = GetNotValidReview();
+    $review = null;
+    foreach ($notValidReview as $key => $value) {
+        $review .= <<<EX
+        <div class="UserReview">
+            <h3><a href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a></h3>
+            <form method="POST">
+                <button name="btnEdit" value={$value['idReview']}>Modifier</button>
+                <button name="btnDelete" value={$value['idReview']}>Supprimer</button>
+            </form>
+            <p>{$value["content"]}</p>
+        </div>
+EX;
+    }
+    return $review;
+}
+
+/**
+ * Récupère les critiques validé par l'administrateur
  * 
  * Retourne un tableau
  */
 function GetValidReview(){
     $db = ConnectDB();
-    $sql = $db->prepare('SELECT `date`, `content`, `mark`, `pseudo`, `title` FROM reviews 
+    $sql = $db->prepare('SELECT `idReview`, `date`, `content`, `mark`, `pseudo`, reviews.`isbn`, `title` FROM reviews 
         JOIN books
             ON books.isbn = reviews.isbn
         WHERE isValid = 1');
@@ -402,8 +485,60 @@ function GetValidReview(){
     return $result;
 }
 
-function ShowReview(){
+/**
+ * Affiche les critiques récupéré par GetValidReview()
+ * 
+ * Retourne de l'HTML
+ */
+function ShowValidReview(){
+    $validReview = GetValidReview();
+    $review = null;
+    foreach ($validReview as $key => $value) {
+        if(isset($_SESSION["Edit"]) && $_SESSION["Edit"] == true){
+            $review .= <<<EX
+            <div class="UserReview">
+                <h3><a href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a></h3>
+                <form method="POST">
+                    <textarea name="txtaNewReview">{$value["content"]}</textarea>
+                    <select name="newScore">
+                        <option value="">--</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                    </select>
+                    <input type="submit" name="btnConfirmEdit">
+                </form>
+            </div>
+EX;
+        }
+        else{
+            $review .= <<<EX
+        <div class="UserReview">
+            <h3><a href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a></h3>
+            <form method="POST">
+                <button name="btnEdit" value={$value['idReview']}>Modifier</button>
+                <button name="btnDelete" value={$value['idReview']}>Supprimer</button>
+            </form>
+            <p>{$value["content"]}</p>
+        </div>
+EX;
+        }       
+    }
+    return $review;
+}
 
+/**
+ * Met à jour la critique
+ */
+function UpdateReview($newContent, $newMark, $id){
+    $db = ConnectDB();
+    $sql = $db->prepare("UPDATE reviews SET `content` = :newContent, `mark` = :newMark WHERE idReview = :id");
+    $sql->bindValue(':newContent', $newContent, PDO::PARAM_STR);
+    $sql->bindValue(':newMark', $newMark, PDO::PARAM_STR);
+    $sql->bindValue(':id', $id, PDO::PARAM_STR);    
+    $sql->execute();
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -414,7 +549,7 @@ function ShowReview(){
  * 
  * Retourne un formulaire HTML
  */
-function addBookForm(){
+function AddBookForm(){
     $form = null;
     $form .= "<form action=\"admin.php\" method=\"POST\">
                 <input type=\"submit\" class=\"inputInsertBook\" name=\"btnNewBook\" value=\"Nouveau livre\">";
@@ -433,6 +568,69 @@ function addBookForm(){
         }
     $form .= "</form>";
     return $form;
+}
+
+/**
+ * Récupère toutes les critiques pas valider
+ * 
+ * Retourne un tableau
+ */
+function GetAllNotValidReview(){
+    $db = ConnectDB();
+    $sql = $db->prepare('SELECT `idReview`, `date`, `content`, `mark`, `pseudo`, reviews.`isbn`, `title` FROM reviews 
+        JOIN books
+            ON books.isbn = reviews.isbn
+        WHERE isValid = 0');
+    $sql->execute();
+    $result = $sql->fetchAll(PDO::FETCH_ASSOC);
+    return $result;
+}
+
+/**
+ * Affiche les critiques récupéré par GetAllNotValidReview()
+ * 
+ * Retourne de l'HTML et un formulaire avec deux boutons
+ */
+function ShowAllNotValidReview(){
+    $notValidReview = GetAllNotValidReview();
+    $review = null;
+    foreach ($notValidReview as $key => $value) {
+        $review .= <<<EX
+        <div class="UserReview">
+            <h3><a href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a></h3>{$value['pseudo']}
+            <form method="POST">
+                <button name="btnValid" value={$value['idReview']}>Valider</button>
+                <button name="btnUnvalid" value={$value['idReview']}>Refuser</button>
+            </form>
+            <p>{$value["content"]}</p>
+        </div>
+EX;
+    }
+    return $review;
+}
+
+/**
+ * Met à jour la validité de la critique
+ * 
+ * Param : $id (ID de la critique)
+ */
+function UpdateToValid($id){
+    $db = ConnectDB();
+    $sql = $db->prepare("UPDATE reviews SET `isValid` = 1 WHERE idReview = :id");
+    $sql->bindValue(':id', $id, PDO::PARAM_STR);
+    $sql->execute();
+}
+
+/**
+ * Supprime la critique
+ * 
+ * Param : $id (ID de la critique)
+ */
+function DeleteReview($id){
+    $db = ConnectDB();
+    $sql = $db->prepare("DELETE FROM reviews WHERE idReview = :id");
+    $sql->bindValue(':id', $id, PDO::PARAM_STR);   
+    $sql->execute();
 }
 
 // -----------------------------------------------------------------------------------------------------------
@@ -499,4 +697,34 @@ if(filter_has_var(INPUT_POST, 'btnPost')){
     else{
         echo "Veuillez compléter tous les champs";
     }
+}
+
+// ===== Validation de la critique par l'administrateur =====
+if(filter_has_var(INPUT_POST, "btnValid")){
+    $id = filter_input(INPUT_POST, "btnValid");
+    UpdateToValid($id);
+}
+
+// ===== Refus de la critique par l'administrateur =====
+if(filter_has_var(INPUT_POST, "btnUnvalid")){
+    $id = filter_input(INPUT_POST, "btnUnvalid");
+    DeleteReview($id);
+}
+
+// ===== Modification de la critique par l'utilisateur =====
+if(filter_has_var(INPUT_POST, "btnEdit")){
+    $id = filter_input(INPUT_POST, "btnEdit");
+    $_SESSION["Edit"] = true;
+    if(filter_has_var(INPUT_POST, "btnConfirmEdit")){
+        $newReview = filter_input(INPUT_POST, "txtaNewReview");
+        $newScore = filter_input(INPUT_POST, "newScore");
+        $_SESSION["Edit"] = null;
+        UpdateReview($newReview, $newScore, $id);
+    }
+}
+
+// ===== Suppression de la critique par l'utilisateur =====
+if(filter_has_var(INPUT_POST, "btnDelete")){
+    $id = filter_input(INPUT_POST, "btnDelete");
+    DeleteReview($id);
 }
