@@ -1,0 +1,72 @@
+nav{
+    background-color: black;
+    position: static;
+    width: 15%;
+    float: left;
+    top: 0;
+    left: 0;
+    min-height: 100vh;
+}
+
+/* ======== Menu ======== */
+.dropdownStyle {
+    background-color: transparent;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    width: 100%;
+}
+.boutonMenuPrincipal:hover, .dropdown-child a:hover, .dropdown-child button:hover{
+    background-color: transparent;
+}
+.dropdown {
+    border: solid 1px blueviolet;
+    position: relative;
+    display: inline-block;
+    width: 99%;
+}
+.dropdown-child {
+    display: none;
+    background-color: transparent;
+    width: 100%;
+}
+.dropdown-child a {
+    color: white;
+    text-decoration: none;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    display: block;
+}
+.dropdown:hover .dropdown-child {
+    display: block;
+}
+
+/* ======== Menu ordre alphabétique ======== */
+.dropdown-abc:hover, .dropdown-child-abc button:hover{
+    background-color: transparent;
+}
+.dropdown-abc {
+    position: relative;
+    display: inline-block;
+    width: 99%;
+}
+.dropdown-child-abc {   
+    display: none;
+    background-color: transparent;
+    width: 100%;
+}
+.dropdown-child-abc a {   
+    color: white;
+    text-decoration: none;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    display: block;
+}
+.dropdown-abc:hover .dropdown-child-abc {
+    display: block;
+    background-color: transparent;
+}
+.dropdown-child-abc button:hover{
+    background-color: #535353;
+}

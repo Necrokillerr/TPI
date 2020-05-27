@@ -23,7 +23,7 @@
             <input type="submit" name="btnLogin" value="Connexion">
             <a href="register.php">s'inscrire</a>
             <?php
-                if(isset($_SESSION["msg"])) { echo $_SESSION["msg"]; }
+                if(isset($_SESSION["msg"])) { echo "<p>".$_SESSION["msg"]."</p>"; }
             ?>
         </form>
     </body>

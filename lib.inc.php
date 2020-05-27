@@ -9,6 +9,8 @@ $_SESSION["msg"] = "";
 // ----------------------------------------------------------------------------------------------------------
 /**
  * Connection à la base de données
+ * 
+ * Retourne un objet PDO
  */
 function ConnectDB(){
     static $db = null;
@@ -30,13 +32,18 @@ function ConnectDB(){
 // ---------------------------------------------------------------------------------------------------------
 /**
  * Compare les champs avec la base de données
+ * 
+ * Param : $pseudo (pseudo de l'utilisateur)
+ *         $password (mot de passe de l'utilisateur)
+ * 
+ * Retourne true ou false
  */
-function LoginUser($nickname, $password){
+function LoginUser($pseudo, $password){
     $db = ConnectDB();
-    $sql = $db->prepare("SELECT Nickname, Pass FROM users WHERE Nickname = :Nickname");    
+    $sql = $db->prepare("SELECT `pseudo`, `password` FROM users WHERE pseudo = :Pseudo");    
     try{
         $sql->execute(array(
-        ':Nickname' => $nickname,
+        ':Pseudo' => $pseudo,
         ));
     } catch(Exception $e) {
         echo 'Connexion impossible : ',  $e->getMessage(), "\n";   
@@ -44,7 +51,7 @@ function LoginUser($nickname, $password){
     }
     $result = $sql->fetch();
     if($password == $result[1]){
-        $_SESSION["StockedNickname"] = $nickname;
+        $_SESSION["StockedNickname"] = $pseudo;
         $_SESSION["IsConnected"] = true;
         return true;
     }
@@ -55,20 +62,24 @@ function LoginUser($nickname, $password){
 
 /**
  * Insertion d'un nouveau user
+ * 
+ * Param : $pseudo (pseudo de l'utilisateur)
+ *         $email (e-mail de l'utilisateur)
+ *         $password (mot de passe hasher de l'utilisateur)
+ * 
+ * Retourne true ou false
  */
-function InsertUser($nickname, $email, $password){
+function InsertUser($pseudo, $email, $password){
     $db = ConnectDB();
-    $sql = $db->prepare("INSERT INTO users (`Nickname`, `Email`, `Pass`, `registeredDate`) VALUES (:Nickname, :Email, :Pwd, :regDate)");   
+    $sql = $db->prepare("INSERT INTO users (`pseudo`, `password`, `email`, `admin`) VALUES (:Pseudo, :Pwd, :Email, false)");   
     try{
         $sql->execute(array(
-            ':Nickname' => $nickname,
-            ':Email' => $email,
+            ':Pseudo' => $pseudo,
             ':Pwd' => $password,
-            ':regDate' => date("Y-m-d H:i:s"),
+            ':Email' => $email,            
         ));
     } catch (Exception $e) {
-        echo 'Insertion impossible : ',  $e->getMessage(), "\n";
-        exit();
+        return false;
     }
     return true;
 }
@@ -76,39 +87,24 @@ function InsertUser($nickname, $email, $password){
 // ---------------------------------------------------------------------------------------------------------
 // -------------------------------------- PAGE PRINCIPALE (index.php) --------------------------------------
 // ---------------------------------------------------------------------------------------------------------
-
+/**
+ * Récupère les livres selon le filtre choisi
+ * 
+ * Retourne un tableau
+ */
 function GetAllBooks(){
     $db = ConnectDB();
-    // Filtre par ordre alphabétique
-/*  if(isset($_SESSION["sortMovies"]) && $_SESSION["sortMovies"] == "ABC"){
-        $sql = $db->prepare("SELECT idmovies, movLocalLink, movName FROM movies ORDER BY movName ASC");
-    }
-    // Filtre par les mieux notés
-    else if(isset($_SESSION["sortScore"]) && $_SESSION["sortScore"] == "SCORE"){
-        $sql = $db->prepare("SELECT movies.idmovies, movLocalLink, movName, Note FROM movies 
-            JOIN usershasnote 
-                ON movies.idmovies = usershasnote.idmovies
-            ORDER BY Note DESC;");
-    }
-    // Filtre par genre
-    else if(isset($_SESSION["sortMovies"]) && $_SESSION["sortMovies"] != null){
-        $sql = $db->prepare('SELECT movies.idmovies, movLocalLink, movName FROM `movies`
-            JOIN `movieshasgenre`
-                ON movies.idmovies = movieshasgenre.idmovies
-            JOIN `genre`
-                ON movieshasgenre.idgenre = genre.idgenre
-            WHERE genre.genre = "'.$_SESSION["sortMovies"].'"');
-    }
-    // Sans filtre
-    else{
-*/
-        $sql = $db->prepare("SELECT `isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM books");
-    //}  
+    $sql = $db->prepare("SELECT `isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM books"); 
     $sql->execute();
     $result = $sql->fetchAll(PDO::FETCH_ASSOC);
     return $result;
 }
 
+/**
+ * Affiche les livres récupéré par la fonction GetAllBooks()
+ * 
+ * Retourne de l'HTML
+ */
 function ShowAllBooks(){
     $books = GetAllBooks();
     $tab = null;
@@ -135,7 +131,7 @@ EX;
             if(isset($_SESSION["IsConnected"])){
                 $tab .= <<<EX
                 <form method="POST">
-                    <button value="{$value["idmovies"]}" name="btnFavori">★</button>
+                    <button value="{$value["isbn"]}" name="btnFavori">★</button>
                 </form>
 EX;
             }
@@ -146,10 +142,43 @@ EX;
 }
 
 // ----------------------------------------------------------------------------------------------------------
+// ----------------------------------------------- NAVIGATION  ----------------------------------------------
+// ----------------------------------------------------------------------------------------------------------
+/**
+ * Bascule entre le profil ou les boutons de connexion (selon si l'utilisateur est connecter ou non)
+ * 
+ * Retourne de l'HTML
+ */
+function ConnectForm(){
+    $form = null;
+    if(isset($_SESSION["IsConnected"]) && $_SESSION["IsConnected"] === true){
+        $form .= "<div class=\"dropdown\">
+                        <button class=\"dropdownStyle\">";
+                        if(isset($_SESSION["StockedNickname"])){
+                            $form .= $_SESSION["StockedNickname"];
+                        }                        
+                        $form .= "</button>
+                        <div class=\"dropdown-child\">
+                            <a href=\"profil.php\">Profil</a>
+                            <a href=\"favoris.php\">Ma bibliothèque</a>
+                            <a href=\"logout.php\">Deconnexion</a>
+                        </div>
+                    </div><br>";
+    }
+    else{
+        $form .= "<button><a href=\"login.php\">Connexion</a></button><button><a href=\"register.php\">S'inscrire</a></button>";
+    }
+    return $form;
+}
+
+// ----------------------------------------------------------------------------------------------------------
 // ------------------------------------ PAGE DESCRIPTIF (bookDetail.PHP) ------------------------------------
 // ----------------------------------------------------------------------------------------------------------
-
-// Récupère les informations d'un livre selon l'isbn situé dans l'url
+/**
+ * Récupère les informations d'un livre selon l'isbn situé dans l'url
+ * 
+ * Retourne un tableau
+ */
 function GetBookDetails(){
     $db = ConnectDB();
     $sql = $db->prepare("SELECT `isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM books WHERE isbn = :isbn");
@@ -159,7 +188,11 @@ function GetBookDetails(){
     return $result;
 }
 
-// Mise en forme du tableau de données du film
+/**
+ * Mise en forme du tableau de données du livre
+ * 
+ * Retourne de l'HTML
+ */
 function BookDetailsForm(){
     $bookInfos = GetBookDetails();
     $desc = null;
@@ -171,11 +204,12 @@ function BookDetailsForm(){
                 </div>
                 <div class="descContainer">
                     <h3>{$value['title']}</h3>
-                    <p><b>Auteur</b> : {$value['author']}</p>
-                    <p><b>Éditeur</b> : {$value['editor']}</p>
-                    <p><b>Date d'édition</b> : {$value['editionDate']}</p>                   
+                    <p><b>Auteur : </b>{$value['author']}</p>
+                    <p><b>Éditeur : </b>{$value['editor']}</p>
+                    <p><b>Date d'édition : </b>{$value['editionDate']}</p>                   
                 </div>
                 <div class="summary">
+                    <b>Résumé : </b>
                     <p>{$value['summary']}</p>
                 </div>
             </div>
@@ -184,9 +218,202 @@ EX;
     return $desc;
 }
 
+/**
+ * Affiche le formulaire pour ajouter une critique
+ * 
+ * Retourne un formulaire HTML
+ */
+function ShowReviewForm(){
+    $reviewForm = null;
+    $reviewForm .= '<form method="POST">
+                        <label>Critique</label>
+                        <textarea name="txtaReview" placeholder="Rédiger une critique"></textarea>
+                        <label>Donner une note : </label>
+                        <select name="scoreBook">
+                            <option value="">--</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                        <input type="submit" name="btnPost">
+                    </form>';
+   return $reviewForm;
+}
+
+/**
+ * Ajoute la critique et le score dans la base de données
+ * 
+ * Param : $review (critique de l'utilisateur)
+ *         $score (note du livre donné par l'utilisateur)
+ * 
+ * Retourne true ou false
+ */
+function addReview($review, $score){
+    $db = ConnectDB();
+    $sql = $db->prepare("INSERT INTO reviews (`date`, `content`, `mark`, `isValid`, `isbn`, `pseudo`) VALUES (:dateNow, :review, :score, false, :isbn, :pseudo)");   
+    try{
+        $sql->execute(array(
+            ':dateNow' => date("Y-m-d"),
+            ':review' => $review,
+            ':score' => $score,
+            ':isbn' => $_GET['id'],
+            ':pseudo' => $_SESSION["StockedNickname"],
+        ));
+    } catch (Exception $e) {
+        return false;
+    }
+    return true;
+}
+
+// ----------------------------------------------------------------------------------------------------------
+// ---------------------------------------- PAGE PROFIL (profil.php) ----------------------------------------
+// ----------------------------------------------------------------------------------------------------------
+/**
+ * Récupère les informations du compte connecté
+ * 
+ * Retourne un tableau
+ */
+function GetProfilDetails(){
+    static $result = null;
+    if($result == null){
+        $db = ConnectDB();
+        $sql = $db->prepare('SELECT `pseudo`, `email`, `password` FROM users WHERE `pseudo` = :Pseudo');
+        $sql->bindParam(':Pseudo', $_SESSION["StockedNickname"], PDO::PARAM_STR);
+        $sql->execute();
+        $result = $sql->fetchAll(PDO::FETCH_ASSOC);
+    }    
+    return $result;
+}
+
+/**
+ * Affiche les informations récupéré par la fonction GetProfilDetails()
+ * 
+ * Retourne de l'HTML
+ */
+function ProfilDetailsForm(){
+    $profilDetails = GetProfilDetails();
+    foreach ($profilDetails as $key => $value) {
+        $infos = "
+        <fieldset>
+            <legend>Informations du compte</legend>
+            <option>Pseudo : ".$value["pseudo"]."</option>
+            <option>Email : ".$value["email"]."</option>
+            <form action=\"profil.php\" method=\"POST\">
+                <input type=\"submit\" class=\"inputUpdatePassword\" name=\"btnUpdatePassword\" value=\"Modifier le mot de passe\"><br>";
+            if(filter_has_var(INPUT_POST, "btnUpdatePassword") || filter_has_var(INPUT_POST, "btnConfirmUpdate")){
+                if(!UpdatePasswordForm()){
+                    $infos .= "                    
+                        <input type=\"password\" class=\"inputUpdatePassword\" name=\"tbxOldPass\" placeholder=\"Ancien mot de passe\"><br>
+                        <input type=\"password\" class=\"inputUpdatePassword\" name=\"tbxNewPass\" placeholder=\"Nouveau mot de passe\"><br>
+                        <input type=\"password\" class=\"inputUpdatePassword\" name=\"tbxConfirmNewPass\" placeholder=\"Confirmer le nouveau mot de passe\">                
+                        <input type=\"submit\" name=\"btnConfirmUpdate\">";
+                }
+            }
+        $infos .= "</form></fieldset>";
+    }                   
+    return $infos;
+}
+
+/**
+ * Met à jour le mot de passe dans la base de données
+ */
+function UpdatePassword($password){
+    $db = ConnectDB();
+    $sql = $db->prepare("UPDATE users SET `password` = :newPass WHERE pseudo = :Pseudo");
+    $sql->bindValue(':newPass', $password, PDO::PARAM_STR);
+    $sql->bindValue(':Pseudo', $_SESSION["StockedNickname"], PDO::PARAM_STR);    
+    $sql->execute();
+}
+
+/**
+ * Conditions pour la modification du mot de passe
+ * 
+ * Retourne true ou false
+ */ 
+function UpdatePasswordForm(){   
+    $profilInfos = GetProfilDetails();
+    $oldPass = filter_input(INPUT_POST, "tbxOldPass");
+    $newPass = filter_input(INPUT_POST, "tbxNewPass");
+    $confirmNewPass = filter_input(INPUT_POST, "tbxConfirmNewPass");        
+    foreach ($profilInfos as $key => $value) {
+        if(filter_has_var(INPUT_POST, "btnConfirmUpdate")){
+            if(!empty($oldPass) && !empty($newPass) && !empty($confirmNewPass)){
+                if(hash("sha256", $oldPass) == $value["password"]){
+                    if(hash("sha256", $newPass) != hash("sha256", $oldPass)){
+                        if(hash("sha256", $newPass) == hash("sha256", $confirmNewPass)){
+                            $_SESSION["msg"] =  "Votre mot de passe à bien été changé !";
+                            UpdatePassword(hash("sha256", $newPass));
+                            return true;
+                        }
+                        else{
+                            $_SESSION["msg"] = "Les mots de passe ne sont pas identique";
+                            return false;                        
+                        }
+                    }
+                    else{
+                        $_SESSION["msg"] =  "Votre mot de passe est identique à l'ancien !";
+                        return false;
+                    }
+                }
+                else{
+                    $_SESSION["msg"] =  "Mot de passe incorrect !";
+                    return false;
+                }
+            }
+            else{
+                $_SESSION["msg"] =  "Veuillez remplir tout les champs !";
+                return false;
+            }
+        }       
+    }
+}
+
+/**
+ * Récupère les livres non validé par l'administrateur
+ * 
+ * Retourne un tableau
+ */
+function GetNotValidReview(){
+    $db = ConnectDB();
+    $sql = $db->prepare('SELECT `date`, `content`, `mark`, `pseudo`, `title` FROM reviews 
+        JOIN books
+            ON books.isbn = reviews.isbn
+        WHERE isValid = 0');
+    $sql->execute();
+    $result = $sql->fetchAll(PDO::FETCH_ASSOC);   
+    return $result;
+}
+
+/**
+ * Récupère les livres validé par l'administrateur
+ * 
+ * Retourne un tableau
+ */
+function GetValidReview(){
+    $db = ConnectDB();
+    $sql = $db->prepare('SELECT `date`, `content`, `mark`, `pseudo`, `title` FROM reviews 
+        JOIN books
+            ON books.isbn = reviews.isbn
+        WHERE isValid = 1');
+    $sql->execute();
+    $result = $sql->fetchAll(PDO::FETCH_ASSOC);   
+    return $result;
+}
+
+function ShowReview(){
+
+}
+
 // ---------------------------------------------------------------------------------------------------------
 // -------------------------------------- PAGE PRINCIPALE (admin.php) --------------------------------------
 // ---------------------------------------------------------------------------------------------------------
+/**
+ * Affiche le formulaire pour ajouter un nouveau livre
+ * 
+ * Retourne un formulaire HTML
+ */
 function addBookForm(){
     $form = null;
     $form .= "<form action=\"admin.php\" method=\"POST\">
@@ -215,9 +442,10 @@ function addBookForm(){
 // ===== Connexion =====
 if(filter_has_var(INPUT_POST, 'btnLogin')){
     $nickname = filter_input(INPUT_POST, "tbxLoginNickname");
-    $password = hash("sha256", filter_input(INPUT_POST, "tbxLoginPassword"));
+    $password = filter_input(INPUT_POST, "tbxLoginPassword");
     if(!empty($nickname) && !empty($password)){
-        if(LoginUser($nickname, $password)){                
+        $hashPassword = hash("sha256", $password);
+        if(LoginUser($nickname, $hashPassword)){
             header("Location: index.php");
         }
         else{
@@ -225,7 +453,7 @@ if(filter_has_var(INPUT_POST, 'btnLogin')){
         }
     }
     else{
-        $_SESSION["msg"] = "Veuillez compléter tout les champs";
+        $_SESSION["msg"] = "Veuillez compléter tous les champs";
     }
 }
 
@@ -244,7 +472,7 @@ if(filter_has_var(INPUT_POST, 'btnRegister')){
                 $_SESSION["msg"] = "Votre compte à bien été enregistré";
             }
             else{
-                $_SESSION["msg"] = "Un problème est survenu, veuillez rééssayer";
+                $_SESSION["msg"] = "Un problème est survenu, veuillez réessayer";
             }
         }
         else{
@@ -252,6 +480,23 @@ if(filter_has_var(INPUT_POST, 'btnRegister')){
         }
     }
     else{
-        $_SESSION["msg"] = "Veuillez compléter tout les champs";
+        $_SESSION["msg"] = "Veuillez compléter tous les champs";
+    }
+}
+
+// ===== Note du livre et critique =====
+if(filter_has_var(INPUT_POST, 'btnPost')){
+    $review = filter_input(INPUT_POST, "txtaReview");
+    $score = filter_input(INPUT_POST, "scoreBook");
+    if($review != "" && $score != ""){
+        if(addReview($review, $score)){
+            echo "Critique envoyer à l'administrateur";
+        }
+        else{
+            echo "Un problème est survenu, veuillez réessayer";
+        }
+    }
+    else{
+        echo "Veuillez compléter tous les champs";
     }
 }

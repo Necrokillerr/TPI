@@ -6,13 +6,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="css/nav.css">
     <link rel="stylesheet" type="text/css" href="css/index.css">
     <title>Ta Bibliothèque</title>
 </head>
     <body>
         <nav>
             <?php
-                //echo ConnectForm();
+                echo ConnectForm();
             ?>
             <div class="dropdown">
                 <button class="dropdownStyle">Livres</button>

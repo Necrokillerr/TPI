@@ -1,9 +1,10 @@
+/* ======== Affichage détails du livre ======== */
 .allDescContainer{
     border: solid 1px red;
     margin: auto;
     display: block;
     margin-bottom: 4%;
-    width: 40%;
+    width: 40vw;
     height: 50.2vh;
 }
 
@@ -31,9 +32,34 @@ img{
 .summary{
     border: solid 1px pink;
     float: right;
-    width: 20vw;
-    height: 20vh;
+    margin-top: -30%;
+    width: 22vw;
+    height: 24vh;
 }
+
+/* ======== Formulaire de critique ======== */
+form{
+    border: solid 1px black;
+    margin: auto;
+    width: 30vw;
+}
+
+textarea{
+    resize: none;
+    width: 20vw;
+    height: 6vh;
+}
+
+select{
+    width: 3vw;
+    height: 3vh;
+}
+
+input{
+
+}
+
+/* ======== Affichages des critiques ======== */
 
 /*
 .UserComment{

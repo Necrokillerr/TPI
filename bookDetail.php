@@ -12,6 +12,8 @@
     <body>
         <?php
             echo BookDetailsForm();
+
+            echo ShowReviewForm();
         ?>
     </body>
 </html>
