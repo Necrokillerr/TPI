@@ -94,31 +94,22 @@ function InsertUser($pseudo, $email, $password){
  */
 function GetAllBooks(){
     $db = ConnectDB();
-    // Filtre par ordre alphabétique
-/*  if(isset($_SESSION["sortMovies"]) && $_SESSION["sortMovies"] == "ABC"){
-        $sql = $db->prepare("SELECT idmovies, movLocalLink, movName FROM movies ORDER BY movName ASC");
+    // Filtre par ordre alphabétique - Titre
+   if(isset($_SESSION["sortBooks"]) && $_SESSION["sortBooks"] == "Titre"){
+        $sql = $db->prepare("SELECT `isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM books ORDER BY title ASC");
     }
-    // Filtre par les mieux notés
-    else if(isset($_SESSION["sortScore"]) && $_SESSION["sortScore"] == "SCORE"){
-        $sql = $db->prepare("SELECT movies.idmovies, movLocalLink, movName, Note FROM movies 
-            JOIN usershasnote 
-                ON movies.idmovies = usershasnote.idmovies
-            ORDER BY Note DESC;");
+    // Filtre par ordre alphabétique - Auteur
+    else if(isset($_SESSION["sortBooks"]) && $_SESSION["sortBooks"] == "Auteur"){
+        $sql = $db->prepare('SELECT `isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM books ORDER BY author ASC');
     }
-    // Filtre par genre
-    else if(isset($_SESSION["sortMovies"]) && $_SESSION["sortMovies"] != null){
-        $sql = $db->prepare('SELECT movies.idmovies, movLocalLink, movName FROM `movies`
-            JOIN `movieshasgenre`
-                ON movies.idmovies = movieshasgenre.idmovies
-            JOIN `genre`
-                ON movieshasgenre.idgenre = genre.idgenre
-            WHERE genre.genre = "'.$_SESSION["sortMovies"].'"');
+    // Filtre par ordre alphabétique - Editeur
+    else if(isset($_SESSION["sortBooks"]) && $_SESSION["sortBooks"] == "Editeur"){
+        $sql = $db->prepare('SELECT `isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM books ORDER BY editor ASC');
     }
     // Sans filtre
     else{
-*/
         $sql = $db->prepare("SELECT `isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM books");
-    //}
+    }
     $sql->execute();
     $result = $sql->fetchAll(PDO::FETCH_ASSOC);
     return $result;
@@ -162,6 +153,46 @@ EX;
             $tab .= "</div></div></div>";
         }
     }   
+    return $tab;
+}
+
+function Search(){
+    $db = ConnectDB();
+    $sql = $db->prepare('SELECT * FROM books WHERE title LIKE concat("%", :searching, "%") OR author LIKE concat("%", :searching, "%") OR editor LIKE concat("%", :searching, "%")');
+    $sql->bindParam(':searching', $_SESSION["search"]);
+    $sql->execute();
+    $result = $sql->fetchAll(PDO::FETCH_ASSOC);
+    return $result;
+}
+
+function FindedForm(){
+    $finded = Search();
+    $tab = null;
+    foreach($finded as $key => $value){            
+        $tab .= <<<EX
+            <div class="allBooksContainer">
+                <div class="bookContainer">
+                    <div class="bookImg">
+                        <img src="img/{$value['image']}"/>
+                    </div>
+                    <div class="bookTitle">
+                        <strong>
+                            <a href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a>
+                        </strong>
+                    </div>
+                    <div class="bookScoreFav">
+                        <label>Note : Chercher note</label>
+EX;
+
+        if(isset($_SESSION["IsConnected"])){
+            $tab .= <<<EX
+            <form method="POST">
+                <button value="{$value["isbn"]}" name="btnFavori">★</button>
+            </form>
+EX;
+        }
+        $tab .= "</div></div></div>";
+    }
     return $tab;
 }
 
@@ -261,7 +292,7 @@ function ShowReviewForm(){
                             <option value="4">4</option>
                             <option value="5">5</option>
                         </select>
-                        <input type="submit" name="btnPost">
+                        <input type="submit" name="btnPost" value="Poster">
                     </form>';
    return $reviewForm;
 }
@@ -319,7 +350,7 @@ function ShowValidReviewOfBook(){
     foreach ($validReview as $key => $value) {
         $review .= <<<EX
         <div class="UserReview">
-            <h3><a href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a></h3>
+            <h3>{$value['pseudo']}</h3>
             <p>{$value["content"]}</p>
         </div>
 EX;
@@ -508,10 +539,12 @@ function ShowValidReview(){
                         <option value="4">4</option>
                         <option value="5">5</option>
                     </select>
-                    <input type="submit" name="btnConfirmEdit">
+                    <input type="submit" name="btnConfirmEdit" value="Mettre à jour">
                 </form>
             </div>
+            
 EX;
+
         }
         else{
             $review .= <<<EX
@@ -727,4 +760,25 @@ if(filter_has_var(INPUT_POST, "btnEdit")){
 if(filter_has_var(INPUT_POST, "btnDelete")){
     $id = filter_input(INPUT_POST, "btnDelete");
     DeleteReview($id);
+}
+
+// ===== Recherche =====
+if(filter_has_var(INPUT_POST, "btnSearch")){
+    $search = filter_input(INPUT_POST, "tbxSearch");
+    $_SESSION["search"] = $search;
+    FindedForm();
+}
+
+// ===== Trie par ordre alphabétique =====
+if(filter_has_var(INPUT_POST, "sortBooks")){
+    $_SESSION["search"] = null;
+    $_SESSION["sortBooks"] = null;
+    $sort = filter_input(INPUT_POST, "sortBooks", FILTER_SANITIZE_STRING, FILTER_NULL_ON_FAILURE);
+    $_SESSION["sortBooks"] = $sort;
+}
+
+// ===== Annule les filtres =====
+if(filter_has_var(INPUT_POST, "btnResetFilter")){
+    $_SESSION["search"] = null;
+    $_SESSION["sortBooks"] = null;
 }

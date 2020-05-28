@@ -18,3 +18,24 @@ h2{
     width: 28%;
     height: auto;
 }
+
+textarea{
+    resize: none;
+    width: 18vw;
+    height: 4vh;
+}
+
+select{
+    display: block;
+    margin-top: -8%;
+    margin-left: 80%;
+    width: 3vw;
+    height: 3vh;
+}
+
+input[name="btnConfirmEdit"]{
+    margin-top: 4%;
+    margin-left: 43%;
+    width: 4vw;
+    height: 3vh;
+}

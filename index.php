@@ -31,8 +31,19 @@
                 </div>
             </div>
         </nav>
+        <form method="POST">
+            <input type="search" name="tbxSearch" placeholder="Rechercher un titre, auteur ou editeur">
+            <input type="submit" name="btnSearch" value="Rechercher">
+            <input type="submit" name="btnResetFilter" value="Retirer filtre">
+        </form>      
         <?php
-            echo ShowAllBooks();
+            if(isset($_SESSION["search"])){
+                echo FindedForm();
+            }
+            else{
+                echo ShowAllBooks();    
+            }
+            
         ?>
     </body>
 </html>
