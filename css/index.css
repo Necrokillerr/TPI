@@ -1,3 +1,22 @@
+/* ==========================================
+// Charneco Samuel
+// 25.05.2020
+// Version 1.0
+// Site de critique de livres
+// ==========================================*/
+
+h3, h4{
+    text-align: center;
+}
+
+.btnNav{
+    margin-left: 6.5%;
+    margin-top: 6%;
+    margin-bottom: 6%;
+    width: 40%;
+    height: 3vh;
+}
+
 /* ======== champ de recherche ======== */
 input[name="tbxSearch"]{
     margin-left: 32.7%;
@@ -12,7 +31,7 @@ button[name="btnFavori"] {
     border: none;
 }
 
-/* ======== Affichage des livres ======== */
+/* ======== Affichage des livres et des informations ======== */
 .bookContainer{
     border: solid 1px red;
     position: relative;
@@ -22,13 +41,13 @@ button[name="btnFavori"] {
     margin-left: 6%;
     margin-bottom: 4%;
     width: 20%;
-    height: 160px; 
+    height: 180px; 
 }
 
 img{
     margin: 2%;
-    width: 5vw;
-    height: 16vh;
+    width: 6vw;
+    height: 18vh;
 }
 
 .bookImg{
@@ -38,6 +57,11 @@ img{
     height: 99%;
 }
 
+a[name="link"]{
+    display: block;
+    margin-top: -10%;
+}
+
 .bookTitle{
     border: solid 1px black;
     text-align: center;
@@ -45,12 +69,31 @@ img{
     float: right;
     padding-top: 8%;
     width: 64%;
-    height: 30%;
+    height: 20%;
 }
 
 .bookScoreFav{
     border: solid 1px black;
     float: right;
     width: 64%;
-    height: 49%;
+    height: 61%;
+}
+
+label[name="fav"]{
+    display: block;
+    margin-top: -7.5%;
+    margin-left: 60%;
+}
+
+button[name="btnFavori"]{
+    float: right;
+    margin-top: -11%;
+    margin-right: 6%;
+}
+
+button[name="btnAdminEdit"], button[name="btnAdminDelete"]{
+    margin-top: 3%;
+    margin-left: 9%;
+    width: 32%;
+    height: 2.5vh;
 }

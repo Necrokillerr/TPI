@@ -1,8 +1,18 @@
 <?php
+// ==========================================
+// Charneco Samuel
+// 25.05.2020
+// Version 1.0
+// Site de critique de livres
+// ==========================================
+
 if(session_status() == PHP_SESSION_NONE){
     session_start(); 
 }
 $_SESSION["msg"] = "";
+$_SESSION["msgAddBook"] = "";
+$_SESSION["msgAddReview"] = "";
+$_SESSION["msgUpdateBook"] = "";
 
 // ----------------------------------------------------------------------------------------------------------
 // ------------------------------------- CONNEXION À LA BASE DE DONNÉES -------------------------------------
@@ -108,7 +118,19 @@ function GetAllBooks(){
     }
     // Sans filtre
     else{
-        $sql = $db->prepare("SELECT `isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM books");
+        $sql = $db->prepare("(
+            SELECT ROUND(AVG(mark) ,1) AS `mark`, books.`isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM reviews
+            JOIN books ON books.isbn = reviews.isbn
+            GROUP BY reviews.`isbn`
+            )
+            UNION
+            (
+            SELECT null AS `mark`, books.`isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM books
+            WHERE books.isbn NOT IN (
+            SELECT books.`isbn` FROM reviews
+            JOIN books ON books.isbn = reviews.isbn
+            GROUP BY reviews.`isbn`)
+            )");
     }
     $sql->execute();
     $result = $sql->fetchAll(PDO::FETCH_ASSOC);
@@ -136,19 +158,32 @@ function ShowAllBooks(){
                         </div>
                         <div class="bookTitle">
                             <strong>
-                                <a href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a>
+                                <a name="link" href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a>
                             </strong>
                         </div>
                         <div class="bookScoreFav">
-                            <label>Note : Chercher note</label>
+                            <label>Auteur : {$value['author']}</label><br>
+                            <label>Editeur : {$value['editor']}</label><br>
+                            <label>Nombre de critiques : 0</label><br>
+                            <label>Note : {$value['mark']}</label>
 EX;
 
             if(isset($_SESSION["IsConnected"])){
                 $tab .= <<<EX
                 <form method="POST">
+                    <label name="fav">Favori : </label>
                     <button value="{$value["isbn"]}" name="btnFavori">★</button>
                 </form>
 EX;
+            }
+            if(isset($_SESSION["IsConnected"])){
+                $tab .= <<<EX
+                <form method="POST">
+                    <button value="{$value["isbn"]}" name="btnAdminEdit">Modifier</button>
+                    <button value="{$value["isbn"]}" name="btnAdminDelete">Supprimer</button>
+                </form>
+EX;
+
             }
             $tab .= "</div></div></div>";
         }
@@ -215,13 +250,13 @@ function ConnectForm(){
                         $form .= "</button>
                         <div class=\"dropdown-child\">
                             <a href=\"profil.php\">Profil</a>
-                            <a href=\"favoris.php\">Ma bibliothèque</a>
+                            <a href=\"userLibrary.php\">Ma bibliothèque</a>
                             <a href=\"logout.php\">Deconnexion</a>
                         </div>
                     </div><br>";
     }
     else{
-        $form .= "<button><a href=\"login.php\">Connexion</a></button><button><a href=\"register.php\">S'inscrire</a></button>";
+        $form .= "<button class=\"btnNav\"><a href=\"login.php\">Connexion</a></button><button class=\"btnNav\"><a href=\"register.php\">S'inscrire</a></button>";
     }
     return $form;
 }
@@ -281,9 +316,9 @@ EX;
 function ShowReviewForm(){
     $reviewForm = null;
     $reviewForm .= '<form method="POST">
-                        <label>Critique</label>
-                        <textarea name="txtaReview" placeholder="Rédiger une critique"></textarea>
-                        <label>Donner une note : </label>
+                        <label>Critique : </label>
+                        <label id="score">Donner une note : </label>
+                        <textarea name="txtaReview" placeholder="Rédiger une critique"></textarea>                      
                         <select name="scoreBook">
                             <option value="">--</option>
                             <option value="1">1</option>
@@ -471,7 +506,8 @@ function GetNotValidReview(){
     $sql = $db->prepare('SELECT `idReview`, `date`, `content`, `mark`, `pseudo`, reviews.`isbn`, `title` FROM reviews 
         JOIN books
             ON books.isbn = reviews.isbn
-        WHERE isValid = 0');
+        WHERE isValid = 0 AND pseudo = :Pseudo');
+        $sql->bindParam(':Pseudo', $_SESSION["StockedNickname"], PDO::PARAM_STR);
     $sql->execute();
     $result = $sql->fetchAll(PDO::FETCH_ASSOC);   
     return $result;
@@ -510,7 +546,8 @@ function GetValidReview(){
     $sql = $db->prepare('SELECT `idReview`, `date`, `content`, `mark`, `pseudo`, reviews.`isbn`, `title` FROM reviews 
         JOIN books
             ON books.isbn = reviews.isbn
-        WHERE isValid = 1');
+        WHERE isValid = 1 AND pseudo = :Pseudo');
+        $sql->bindParam(':Pseudo', $_SESSION["StockedNickname"], PDO::PARAM_STR);
     $sql->execute();
     $result = $sql->fetchAll(PDO::FETCH_ASSOC);   
     return $result;
@@ -575,7 +612,82 @@ function UpdateReview($newContent, $newMark, $id){
 }
 
 // ---------------------------------------------------------------------------------------------------------
-// -------------------------------------- PAGE PRINCIPALE (admin.php) --------------------------------------
+// ----------------------------------- MA BIBLIOTHEQUE (userLibrary.php) -----------------------------------
+// ---------------------------------------------------------------------------------------------------------
+/**
+ * Ajoute un lien entre l'utilisateur et le livre
+ * 
+ * Param : $pseudo (Pesudo de l'utilisateur)
+ *         $idBook (ISBN du livre à ajouter)
+ * 
+ * Retourne true ou false
+ */
+function AddToFavList($pseudo, $idBook){
+    $db = ConnectDB();
+    $sql = $db->prepare("INSERT INTO users_has_books (`pseudo`, `isbn`) VALUES (:pseudo, :id)");
+    try{
+        $sql->execute(array(
+            ':pseudo' => $pseudo,
+            ':id' => $idBook,
+        ));
+    } catch (Exception $e) {
+        echo 'Insertion impossible : ',  $e->getMessage(), "\n";
+        exit();
+    }
+    return true;
+}
+
+function GetFavBooks(){
+    $db = ConnectDB();
+    // récupère les films favoris
+    $sql = $db->prepare('(
+        SELECT ROUND(AVG(mark) ,1) AS `mark`, books.`isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM reviews
+        JOIN books ON books.isbn = reviews.isbn
+        WHERE `pseudo` = :Pseudo
+        GROUP BY reviews.`isbn`
+        )
+        UNION
+        (
+        SELECT null AS `mark`, books.`isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM books
+        WHERE books.isbn NOT IN (
+        SELECT books.`isbn` FROM reviews
+        JOIN books ON books.isbn = reviews.isbn
+        WHERE `pseudo` = :Pseudo
+        GROUP BY reviews.`isbn`)
+        )');
+    $sql->bindParam(':Pseudo', $_SESSION["StockedNickname"]);
+    $sql->execute();
+    $result = $sql->fetchAll(PDO::FETCH_ASSOC);
+    return $result;
+}
+
+function ShowFavBooksForm(){
+    $favMovies = GetFavBooks();
+    $tab = null;
+    foreach($favMovies as $key => $value){       
+        $tab .= <<<EX
+                <div class="allBooksContainer">
+                    <div class="bookContainer">
+                        <div class="bookImg">
+                            <img src="img/{$value['image']}"/>
+                        </div>
+                        <div class="bookTitle">
+                            <strong>
+                                <a name="link" href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a>
+                            </strong>
+                        </div>
+                        <div class="bookScoreFav">
+                            <label>Auteur : {$value['author']}</label><br>
+                            <label>Editeur : {$value['editor']}</label><br>
+                            <label>Note : {$value['mark']}</label>
+EX;
+        $tab .= "</div></div></div>";
+    }
+    return $tab;
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// ------------------------------------ PAGE ADMINISTRATEUR (admin.php) ------------------------------------
 // ---------------------------------------------------------------------------------------------------------
 /**
  * Affiche le formulaire pour ajouter un nouveau livre
@@ -584,7 +696,7 @@ function UpdateReview($newContent, $newMark, $id){
  */
 function AddBookForm(){
     $form = null;
-    $form .= "<form action=\"admin.php\" method=\"POST\">
+    $form .= "<form action=\"admin.php\" method=\"POST\"  enctype=\"multipart/form-data\">
                 <input type=\"submit\" class=\"inputInsertBook\" name=\"btnNewBook\" value=\"Nouveau livre\">";
         if(filter_has_var(INPUT_POST, "btnNewBook") || filter_has_var(INPUT_POST, "btnAddBook")){
             //if(addBook()){
@@ -592,15 +704,207 @@ function AddBookForm(){
                     <input type=\"text\" class=\"inputInsertBook\" name=\"tbxTitle\" placeholder=\"Titre du livre\">
                     <input type=\"text\" class=\"inputInsertBook\" name=\"tbxAuthor\" placeholder=\"Auteur du livre\">
                     <input type=\"text\" class=\"inputInsertBook\" name=\"tbxEditor\" placeholder=\"Editeur du livre\">
-                    <textarea class=\"inputInsertBook\" name=\"tbxSummary\" placeholder=\"Résumé du livre\"></textarea>                    
+                    <textarea class=\"inputInsertBook\" name=\"txtaSummary\" placeholder=\"Résumé du livre\"></textarea>                    
                     <input type=\"text\" class=\"inputInsertBook\" name=\"tbxIsbn\" placeholder=\"ISBN du livre\">
                     <input type=\"text\" class=\"inputInsertBook\" name=\"tbxEditionDate\" placeholder=\"Date d'édition\">
                     <input type=\"file\" class=\"inputInsertBook\" name=\"img[]\">
-                    <input type=\"submit\" name=\"btnAddBook\">";
+                    <input type=\"submit\" name=\"btnAddBook\" value=\"Ajouter une livre\">";
             //}               
         }
     $form .= "</form>";
     return $form;
+}
+
+/**
+ * Ajoute un livre en base de données
+ * 
+ * Param : $title   (Titre du livre)
+ *         $author  (Auteur du livre)
+ *         $editor  (éditeur du livre)
+ *         $summary (résumé du livre)
+ *         $isbn    (code ISBN du livre)
+ *         $editionDate (Date d'édition du livre)
+ *         $img     image représantant le livre)
+ * 
+ * Retourne tru ou false
+ */
+function AddBook($title, $author, $editor, $summary, $isbn, $editionDate, $img){
+    $db = ConnectDB();
+    $sql = $db->prepare("INSERT INTO books (`title`, `author`, `editor`, `summary`, `isbn`, `editionDate`, `image`) VALUES (:Title, :Author, :Editor, :Summary, :Isbn, :EditionDate, :Img)");   
+    try{
+        $sql->execute(array(
+            ':Title' => $title,
+            ':Author' => $author,
+            ':Editor' => $editor,
+            ':Summary' => $summary,
+            ':Isbn' => $isbn,
+            ':EditionDate' => $editionDate,
+            ':Img' => $img,
+        ));
+    } catch (Exception $e) {
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Récupère les informations du livre à modifier
+ * 
+ * Retourne un tableau
+ */
+function GetInfosToUpdate(){
+    $db = ConnectDB();
+    $sql = $db->prepare('SELECT `isbn`, `title`, `author`, `editor`, `summary`, `editionDate` FROM books WHERE isbn = :Isbn');
+    $sql->bindParam(':Isbn', $_SESSION["id"], PDO::PARAM_STR);
+    $sql->execute();
+    $result = $sql->fetchAll(PDO::FETCH_ASSOC);   
+    return $result;
+}
+
+/**
+ * Affiche le formulaire pour modifier un livre
+ * 
+ * Retourne un formulaire HTML remplis
+ */
+function UpdateBookForm(){
+    $infos = GetInfosToUpdate();
+    $form = null;
+    $form .= "<form action=\"admin.php\" method=\"POST\"  enctype=\"multipart/form-data\">";
+    foreach ($infos as $key => $value) {
+        $form .= <<<EX
+            <input type="text" class="inputInsertBook" name="tbxNewTitle" placeholder="Titre du livre" value="{$value['title']}">
+            <input type="text" class="inputInsertBook" name="tbxNewAuthor" placeholder="Auteur du livre" value="{$value['author']}">
+            <input type="text" class="inputInsertBook" name="tbxNewEditor" placeholder="Editeur du livre" value="{$value['editor']}">
+            <textarea class="inputInsertBook" name="txtaNewSummary" placeholder="Résumé du livre">{$value['summary']}</textarea>                    
+            <input type="text" class="inputInsertBook" name="tbxSameIsbn" placeholder="ISBN du livre" value="{$value['isbn']}" readonly>
+            <input type="text" class="inputInsertBook" name="tbxNewEditionDate" placeholder="Date d'édition" value="{$value['editionDate']}">                   
+            <input type="submit" name="btnEditBook" value="Mettre à jour">
+EX;
+        
+    }
+    $form .= "</form>";
+    return $form;
+}
+
+/**
+ * Met à jour les informations du livre dans la base de données
+ * 
+ * Param : $title   (Titre du livre)
+ *         $author  (Auteur du livre)
+ *         $editor  (éditeur du livre)
+ *         $summary (résumé du livre)
+ *         $editionDate (Date d'édition du livre)7
+ * 
+ * Retourne true ou false
+ */
+function UpdateBook($title, $author, $editor, $summary, $isbn, $editionDate){
+    $db = ConnectDB();
+    $sql = $db->prepare("UPDATE books SET `title` = :NewTitle, `author` = :NewAuthor, `editor` = :NewEditor, `summary` = :NewSummary, `editionDate` = :NewEditionDate WHERE isbn = :Isbn");
+    $sql->bindValue(':NewTitle', $title, PDO::PARAM_STR);
+    $sql->bindValue(':NewAuthor', $author, PDO::PARAM_STR);
+    $sql->bindValue(':NewEditor', $editor, PDO::PARAM_STR);
+    $sql->bindValue(':NewSummary', $summary, PDO::PARAM_STR);
+    $sql->bindValue(':Isbn', $isbn, PDO::PARAM_STR);
+    $sql->bindValue(':NewEditionDate', $editionDate, PDO::PARAM_STR);
+    try{
+        $sql->execute();
+    } 
+    catch (Exception $e){
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Supprime un livre
+ * 
+ * retourne un tableau
+ */
+function GetImage($id){
+    $db = ConnectDB();
+    $sql = $db->prepare('SELECT `image` FROM books WHERE isbn = :Isbn');
+    $sql->bindValue(':Isbn', $id, PDO::PARAM_STR);
+    $sql->execute();
+    $result = $sql->fetchAll(PDO::FETCH_ASSOC);
+    return $result;
+}
+
+/**
+ * Supprime les critiques liées au livre
+ * 
+ * Param : $id (ID du livre à supprimer)
+ * 
+ * retourne true ou false
+ */
+function DeleteLinkedReview($id){
+    $db = ConnectDB();
+    $sql = $db->prepare("DELETE FROM reviews WHERE isbn = :id");
+    $sql->bindValue(':id', $id, PDO::PARAM_STR);
+    try{
+        $sql->execute();
+    }
+    catch (Exception $e){
+        echo "Problème : ".$e->getMessage();
+        //return false;
+    }
+    return true;
+}
+
+/**
+ * Supprime le livre de la bibliothèque de tout les utilisateurs
+ * 
+ * Param : $id (ID du livre à supprimer)
+ * 
+ * retourne true ou false
+ */
+function DeleteFavLink($id){
+    $db = ConnectDB();
+    $sql = $db->prepare("DELETE FROM users_has_books WHERE isbn = :id");
+    $sql->bindValue(':id', $id, PDO::PARAM_STR);
+    try{
+        $sql->execute();
+    }
+    catch (Exception $e){
+        echo "Problème : ".$e->getMessage();
+        //return false;
+    }
+    return true;
+}
+
+/**
+ * Supprime un livre
+ * 
+ * Param : $id (ID du livre à supprimer)
+ * 
+ * retourne true ou false
+ */
+function DeleteBook($id){
+    $db = ConnectDB();
+    $sql = $db->prepare("DELETE FROM books WHERE isbn = :id");
+    $sql->bindValue(':id', $id, PDO::PARAM_STR);
+    try{
+        $sql->execute();
+    }
+    catch (Exception $e){
+        echo "Problème : ".$e->getMessage();
+        //return false;
+    }
+    return true;
+}
+
+/**
+ * Sauvegarde le nom de l'image de l'utilisateur dans le dossier img/
+ */
+function MoveUpdatedFile(){
+    $uploadFolder = 'img';
+    // Déplace le ou les fichiers dans un dossier
+    foreach ($_FILES["img"]["error"] as $key => $error) {
+        if ($error == UPLOAD_ERR_OK) {
+            $tmp_name = $_FILES["img"]["tmp_name"][$key];
+            $name = basename($_FILES["img"]["name"][$key]);               
+            move_uploaded_file($tmp_name, "$uploadFolder/$name");
+        }
+    }
 }
 
 /**
@@ -630,11 +934,12 @@ function ShowAllNotValidReview(){
     foreach ($notValidReview as $key => $value) {
         $review .= <<<EX
         <div class="UserReview">
-            <h3><a href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a></h3>{$value['pseudo']}
-            <form method="POST">
+            <h3><a href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a></h3>
+            <form name="btnChoose" method="POST">
                 <button name="btnValid" value={$value['idReview']}>Valider</button>
                 <button name="btnUnvalid" value={$value['idReview']}>Refuser</button>
             </form>
+            <strong>{$value['pseudo']}</strong>
             <p>{$value["content"]}</p>
         </div>
 EX;
@@ -721,14 +1026,15 @@ if(filter_has_var(INPUT_POST, 'btnPost')){
     $score = filter_input(INPUT_POST, "scoreBook");
     if($review != "" && $score != ""){
         if(addReview($review, $score)){
-            echo "Critique envoyer à l'administrateur";
+            
+            $_SESSION["msgAddReview"] = "<h4>Critique envoyer à l'administrateur</h4>";
         }
         else{
-            echo "Un problème est survenu, veuillez réessayer";
+            $_SESSION["msgAddReview"] = "<h4>Un problème est survenu, veuillez réessayer</h4>";
         }
     }
     else{
-        echo "Veuillez compléter tous les champs";
+        $_SESSION["msgAddReview"] = "<h4>Veuillez compléter tous les champs</h4>";
     }
 }
 
@@ -781,4 +1087,80 @@ if(filter_has_var(INPUT_POST, "sortBooks")){
 if(filter_has_var(INPUT_POST, "btnResetFilter")){
     $_SESSION["search"] = null;
     $_SESSION["sortBooks"] = null;
+}
+
+// ===== Ajoute d'un livre dans la bibliothèque =====
+if(filter_has_var(INPUT_POST, "btnFavori")){
+    $favBook = $_POST["btnFavori"];
+    $pseudo = $_SESSION["StockedNickname"];
+    AddToFavList($pseudo, $favBook);
+}
+
+// ===== Ajout d'un livre dans le site (admin) =====
+if(filter_has_var(INPUT_POST, "btnAddBook")){
+    $title = filter_input(INPUT_POST, "tbxTitle");
+    $author = filter_input(INPUT_POST, "tbxAuthor");
+    $editor = filter_input(INPUT_POST, "tbxEditor");
+    $summary = filter_input(INPUT_POST, "txtaSummary");
+    $isbn = filter_input(INPUT_POST, "tbxIsbn");
+    $editionDate = filter_input(INPUT_POST, "tbxEditionDate");
+    $img = $_FILES['img']['name'][0];
+    if(AddBook($title, $author, $editor, $summary, $isbn, $editionDate, $img)){
+        MoveUpdatedFile();
+        $_SESSION["msgAddBook"] = "<h4>Le livre a été ajouté !</h4>";
+    }
+    else{
+        $_SESSION["msgAddBook"] = "<h4>Un problème est survenu, Veillez à ce que les champs soient tous remplis !</h4>";
+    }
+}
+
+// ===== Modification d'un livre dans le site (admin) =====
+if(filter_has_var(INPUT_POST, "btnAdminEdit")){
+    $id = filter_input(INPUT_POST, "btnAdminEdit");
+    $_SESSION["id"] = $id;
+    $_SESSION["adminEdit"] = true;
+    header("Location: admin.php");
+}
+
+// ===== Met à jourles informations du livre (admin) =====
+if(filter_has_var(INPUT_POST, "btnEditBook")){
+    $newTitle = filter_input(INPUT_POST, "tbxNewTitle");
+    $newAuthor = filter_input(INPUT_POST, "tbxNewAuthor");
+    $newEditor = filter_input(INPUT_POST, "tbxNewEditor");
+    $newSummary = filter_input(INPUT_POST, "txtaNewSummary");
+    $isbn = filter_input(INPUT_POST, "tbxSameIsbn");
+    $newEditionDate = filter_input(INPUT_POST, "tbxNewEditionDate");
+    $_SESSION["adminEdit"] = null;
+    if(UpdateBook($newTitle, $newAuthor, $newEditor, $newSummary, $isbn, $newEditionDate)){
+        $_SESSION["msgUpdateBook"] = "<h4>Le livre a été mis à jour !</h4>";
+    }
+    else{
+        $_SESSION["msgUpdateBook"] = "<h4>Un problème est survenu lors de la modification. Veuillez réessayer</h4>";
+    }
+}
+
+// ===== Suppression d'un livre dans le site (admin) =====
+if(filter_has_var(INPUT_POST, "btnAdminDelete")){
+    $id = filter_input(INPUT_POST, "btnAdminDelete");
+    $imgToDelete = GetImage($id);
+    foreach ($imgToDelete as $key => $value) {
+        $img = $value["image"];
+    }
+    if(DeleteLinkedReview($id)){
+        if(DeleteFavLink($id)){
+            if(DeleteBook($id)){
+                unlink('img/'.$img);
+                $_SESSION["msgDeleteBook"] = "<h4>La suppression du livre c'est bien passé !</h4>";
+            }
+            else{
+                $_SESSION["msgDeleteBook"] = "<h4>Un problème est survenu !</h4>";
+            }   
+        }
+        else{
+            $_SESSION["msgDeleteBook"] = "<h4>Un problème est survenu !</h4>";
+        }
+    }
+    else{       
+        $_SESSION["msgDeleteBook"] = "<h4>Un problème est survenu !</h4>";
+    }    
 }

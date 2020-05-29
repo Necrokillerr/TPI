@@ -1,3 +1,9 @@
+<!-- ==========================================
+// Charneco Samuel
+// 25.05.2020
+// Version 1.0
+// Site de critique de livres
+// ========================================== -->
 <?php
 // Initialize the session.
 // If you are using session_name("something"), don't forget it now!

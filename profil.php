@@ -1,3 +1,9 @@
+<!-- ==========================================
+// Charneco Samuel
+// 25.05.2020
+// Version 1.0
+// Site de critique de livres
+// ========================================== -->
 <?php
     require 'lib.inc.php';
 ?>

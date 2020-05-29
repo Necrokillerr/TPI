@@ -1,3 +1,9 @@
+<!-- ==========================================
+// Charneco Samuel
+// 25.05.2020
+// Version 1.0
+// Site de critique de livres
+// ========================================== -->
 <?php
     require 'lib.inc.php';
 ?>
@@ -13,7 +19,8 @@
     <body>
         <?php
             echo BookDetailsForm();
-            echo ShowReviewForm();            
+            echo ShowReviewForm();
+            if(isset($_SESSION["msgAddReview"])){ echo $_SESSION["msgAddReview"]; }         
         ?>
         <h2>Critiques du livre</h2>
         <?php

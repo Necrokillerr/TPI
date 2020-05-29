@@ -1,3 +1,14 @@
+/* ==========================================
+// Charneco Samuel
+// 25.05.2020
+// Version 1.0
+// Site de critique de livres
+// ==========================================*/
+
+h4{
+    text-align: center;
+}
+
 /* ======== Affichage détails du livre ======== */
 .allDescContainer{
     border: solid 1px red;
@@ -44,40 +55,34 @@ form{
     width: 30vw;
 }
 
+label{
+    display: inline-block;
+}
+
+#score{
+    float: right;
+    margin-right: 6%;
+}
+
 textarea{
     resize: none;
+    display: block;
     width: 20vw;
     height: 6vh;
 }
 
 select{
+    display: block;
+    margin-top: -8%;
+    margin-right: 12%;
+    float: right;
     width: 3vw;
     height: 3vh;
 }
 
-/* ======== Affichages des critiques ======== */
-
-/*
-.UserComment{
-    border: 1px solid;
-    padding: 10px;
-    box-shadow: 2px 4px;
-    border-radius: 10px;
-    margin-top: 1%;
-    margin-left: 43%;
-    text-align: left;
-    width: 28%;
-    height: auto;
+input{
+    margin-top: 2%;
+    margin-left: 40%;
+    width: 20%;
+    height: 3vh;
 }
-
-input[name="comment"]{
-    width: 26%;
-    height: 60px;
-}
-
-input[name="postComment"]{
-    width: 3%;
-    height: 40px;
-    margin-left: 1%;
-}
-*/
