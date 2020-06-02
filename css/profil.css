@@ -5,6 +5,10 @@
 // Site de critique de livres
 // ==========================================*/
 
+h4{
+    text-align: center;
+}
+
 h2{
     border: solid 1px black;
     text-align: center;
@@ -14,6 +18,23 @@ h2{
     width: 40%;
 }
 
+
+/* ======== Informations du compte ======== */
+fieldset{
+    margin: auto;
+    width: 30%;
+}
+
+input{
+    margin-top: 1%;
+}
+
+input[name="btnUpdatePassword"]{
+    margin-left: 38%;
+    height: 3vh;
+}
+
+/* ======== Critiques ======== */
 .UserReview{
     border: 1px solid;
     padding: 10px;

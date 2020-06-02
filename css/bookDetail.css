@@ -40,6 +40,10 @@ img{
     height: 20vh;
 }
 
+button[name="btnFavori"]{
+    width: 6%;
+}
+
 .summary{
     border: solid 1px pink;
     float: right;
@@ -49,7 +53,7 @@ img{
 }
 
 /* ======== Formulaire de critique ======== */
-form{
+form[name="frmReview"]{
     border: solid 1px black;
     margin: auto;
     width: 30vw;

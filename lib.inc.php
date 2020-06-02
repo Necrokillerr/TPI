@@ -50,7 +50,7 @@ function ConnectDB(){
  */
 function LoginUser($pseudo, $password){
     $db = ConnectDB();
-    $sql = $db->prepare("SELECT `pseudo`, `password` FROM users WHERE pseudo = :Pseudo");    
+    $sql = $db->prepare("SELECT `pseudo`, `password`, `admin` FROM users WHERE pseudo = :Pseudo");    
     try{
         $sql->execute(array(
         ':Pseudo' => $pseudo,
@@ -63,6 +63,9 @@ function LoginUser($pseudo, $password){
     if($password == $result[1]){
         $_SESSION["StockedNickname"] = $pseudo;
         $_SESSION["IsConnected"] = true;
+        if($result[2] == 1){
+            $_SESSION["isAdmin"] = true;
+        }
         return true;
     }
     else{
@@ -119,18 +122,23 @@ function GetAllBooks(){
     // Sans filtre
     else{
         $sql = $db->prepare("(
-            SELECT ROUND(AVG(mark) ,1) AS `mark`, books.`isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM reviews
-            JOIN books ON books.isbn = reviews.isbn
-            GROUP BY reviews.`isbn`
+            SELECT COUNT(idReview) AS nbReviews, ROUND(AVG(mark), 1) AS mark, reviews.isbn, title, author, editor, editionDate, image
+            FROM reviews 
+                JOIN books
+                ON reviews.isbn = books.isbn
+            GROUP BY reviews.isbn
             )
             UNION
             (
-            SELECT null AS `mark`, books.`isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM books
-            WHERE books.isbn NOT IN (
-            SELECT books.`isbn` FROM reviews
-            JOIN books ON books.isbn = reviews.isbn
-            GROUP BY reviews.`isbn`)
-            )");
+            SELECT null, null AS mark, books.isbn, title, author, editor, editionDate, image
+            FROM books
+            WHERE books.isbn NOT IN(
+                SELECT books.`isbn` FROM books
+                    JOIN reviews
+                    ON books.isbn = reviews.isbn
+            GROUP BY reviews.`isbn`
+            )
+        )");
     }
     $sql->execute();
     $result = $sql->fetchAll(PDO::FETCH_ASSOC);
@@ -164,19 +172,11 @@ function ShowAllBooks(){
                         <div class="bookScoreFav">
                             <label>Auteur : {$value['author']}</label><br>
                             <label>Editeur : {$value['editor']}</label><br>
-                            <label>Nombre de critiques : 0</label><br>
+                            <label>Nombre de critiques : {$value['nbReviews']}</label><br>
                             <label>Note : {$value['mark']}</label>
 EX;
 
-            if(isset($_SESSION["IsConnected"])){
-                $tab .= <<<EX
-                <form method="POST">
-                    <label name="fav">Favori : </label>
-                    <button value="{$value["isbn"]}" name="btnFavori">★</button>
-                </form>
-EX;
-            }
-            if(isset($_SESSION["IsConnected"])){
+            if(isset($_SESSION["isAdmin"])){
                 $tab .= <<<EX
                 <form method="POST">
                     <button value="{$value["isbn"]}" name="btnAdminEdit">Modifier</button>
@@ -190,7 +190,25 @@ EX;
     }   
     return $tab;
 }
+/**
+ * Récupère le nombre de critiques d'un livre
+ * 
+ * Retourne de l'HTML
+ */
+function GetNumberOfReviews(){
+    $db = ConnectDB();
+    $sql = $db->prepare('');
+    $sql->bindParam(':searching', $_SESSION["search"]);
+    $sql->execute();
+    $result = $sql->fetchAll(PDO::FETCH_ASSOC);
+    return $result;
+}
 
+/**
+ * Récupère les livres qui concerne la recherche de l'utilisateur
+ * 
+ * Retourne un tableau
+ */
 function Search(){
     $db = ConnectDB();
     $sql = $db->prepare('SELECT * FROM books WHERE title LIKE concat("%", :searching, "%") OR author LIKE concat("%", :searching, "%") OR editor LIKE concat("%", :searching, "%")');
@@ -200,23 +218,31 @@ function Search(){
     return $result;
 }
 
+/**
+ * Affiche les livres trouvé par la fonction Search()
+ * 
+ * Retourne de l'HTML
+ */
 function FindedForm(){
     $finded = Search();
     $tab = null;
     foreach($finded as $key => $value){            
         $tab .= <<<EX
-            <div class="allBooksContainer">
-                <div class="bookContainer">
-                    <div class="bookImg">
-                        <img src="img/{$value['image']}"/>
-                    </div>
-                    <div class="bookTitle">
-                        <strong>
-                            <a href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a>
-                        </strong>
-                    </div>
-                    <div class="bookScoreFav">
-                        <label>Note : Chercher note</label>
+        <div class="allBooksContainer">
+        <div class="bookContainer">
+            <div class="bookImg">
+                <img src="img/{$value['image']}"/>
+            </div>
+            <div class="bookTitle">
+                <strong>
+                    <a name="link" href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a>
+                </strong>
+            </div>
+            <div class="bookScoreFav">
+                <label>Auteur : {$value['author']}</label><br>
+                <label>Editeur : {$value['editor']}</label><br>
+                <label>Nombre de critiques : {$value['nbReviews']}</label><br>
+                <label>Note : {$value['mark']}</label>
 EX;
 
         if(isset($_SESSION["IsConnected"])){
@@ -296,7 +322,18 @@ function BookDetailsForm(){
                     <h3>{$value['title']}</h3>
                     <p><b>Auteur : </b>{$value['author']}</p>
                     <p><b>Éditeur : </b>{$value['editor']}</p>
-                    <p><b>Date d'édition : </b>{$value['editionDate']}</p>                   
+                    <p><b>Date d'édition : </b>{$value['editionDate']}</p>
+EX;
+
+                if(isset($_SESSION["IsConnected"])){
+                    $desc .= <<<EX
+                    <form method="POST">
+                        <label><b>Favori : </b></label>
+                        <button class="fav" value="{$value["isbn"]}" name="btnFavori">★</button>
+                    </form>
+EX;
+                }
+        $desc .= <<<EX
                 </div>
                 <div class="summary">
                     <b>Résumé : </b>
@@ -315,7 +352,7 @@ EX;
  */
 function ShowReviewForm(){
     $reviewForm = null;
-    $reviewForm .= '<form method="POST">
+    $reviewForm .= '<form name="frmReview" method="POST">
                         <label>Critique : </label>
                         <label id="score">Donner une note : </label>
                         <textarea name="txtaReview" placeholder="Rédiger une critique"></textarea>                      
@@ -423,23 +460,61 @@ function ProfilDetailsForm(){
     foreach ($profilDetails as $key => $value) {
         $infos = "
         <fieldset>
-            <legend>Informations du compte</legend>
-            <option>Pseudo : ".$value["pseudo"]."</option>
-            <option>Email : ".$value["email"]."</option>
+            <legend>Informations du compte</legend>           
             <form action=\"profil.php\" method=\"POST\">
-                <input type=\"submit\" class=\"inputUpdatePassword\" name=\"btnUpdatePassword\" value=\"Modifier le mot de passe\"><br>";
+                <input type=\"submit\" class=\"inputUpdatePassword\" name=\"btnUpdatePassword\" value=\"Modifier le compte\"><br>";
             if(filter_has_var(INPUT_POST, "btnUpdatePassword") || filter_has_var(INPUT_POST, "btnConfirmUpdate")){
                 if(!UpdatePasswordForm()){
-                    $infos .= "                    
+                    $infos .= "
+                        <label>Pseudo : </label><input type=\"text\" name=\"tbxNewPseudo\" value=".$value["pseudo"]."><br>
+                        <label>E-mail : </label><input type=\"email\" name=\"tbxNewEmail\" value=".$value["email"]."><br>
                         <input type=\"password\" class=\"inputUpdatePassword\" name=\"tbxOldPass\" placeholder=\"Ancien mot de passe\"><br>
                         <input type=\"password\" class=\"inputUpdatePassword\" name=\"tbxNewPass\" placeholder=\"Nouveau mot de passe\"><br>
                         <input type=\"password\" class=\"inputUpdatePassword\" name=\"tbxConfirmNewPass\" placeholder=\"Confirmer le nouveau mot de passe\">                
-                        <input type=\"submit\" name=\"btnConfirmUpdate\">";
+                        <input type=\"submit\" name=\"btnConfirmUpdate\" value=\"Mettre à jour\">";
                 }
             }
+            else{
+                $infos .= "<option>Pseudo : ".$value["pseudo"]."</option>
+                <option>Email : ".$value["email"]."</option>";
+            }            
         $infos .= "</form></fieldset>";
     }                   
     return $infos;
+}
+
+/**
+ * Met à jour le champs pseudo de la table users_has_books
+ */
+function UpdatePseudoUserHasBooks($newPseudo){
+    $db = ConnectDB();
+    $sql = $db->prepare("UPDATE users_has_books SET `pseudo` = :newPseudo WHERE pseudo = :Pseudo");
+    $sql->bindParam(':newPseudo', $newPseudo, PDO::PARAM_STR);
+    $sql->bindParam(':Pseudo', $_SESSION["StockedNickname"], PDO::PARAM_STR);  
+    $sql->execute();
+}
+
+/**
+ * Met à jour le champs pseudo de la table reviews
+ */
+function UpdatePseudoReview($newPseudo){
+    $db = ConnectDB();
+    $sql = $db->prepare("UPDATE reviews SET `pseudo` = :newPseudo WHERE pseudo = :Pseudo");
+    $sql->bindParam(':newPseudo', $newPseudo, PDO::PARAM_STR);
+    $sql->bindParam(':Pseudo', $_SESSION["StockedNickname"], PDO::PARAM_STR);  
+    $sql->execute();
+}
+
+/**
+ * Met à jour les informations (pseudo et email) dans la base de données
+ */
+function UpdateUser($newPseudo, $newEmail){
+    $db = ConnectDB();
+    $sql = $db->prepare("UPDATE users SET `pseudo` = :newPseudo, `email` = :newEmail WHERE pseudo = :Pseudo");
+    $sql->bindParam(':newPseudo', $newPseudo, PDO::PARAM_STR);
+    $sql->bindParam(':newEmail', $newEmail, PDO::PARAM_STR);
+    $sql->bindParam(':Pseudo', $_SESSION["StockedNickname"], PDO::PARAM_STR);  
+    $sql->execute();
 }
 
 /**
@@ -448,8 +523,8 @@ function ProfilDetailsForm(){
 function UpdatePassword($password){
     $db = ConnectDB();
     $sql = $db->prepare("UPDATE users SET `password` = :newPass WHERE pseudo = :Pseudo");
-    $sql->bindValue(':newPass', $password, PDO::PARAM_STR);
-    $sql->bindValue(':Pseudo', $_SESSION["StockedNickname"], PDO::PARAM_STR);    
+    $sql->bindParam(':newPass', $password, PDO::PARAM_STR);
+    $sql->bindParam(':Pseudo', $_SESSION["StockedNickname"], PDO::PARAM_STR);   
     $sql->execute();
 }
 
@@ -458,13 +533,18 @@ function UpdatePassword($password){
  * 
  * Retourne true ou false
  */ 
-function UpdatePasswordForm(){   
+function UpdatePasswordForm(){
     $profilInfos = GetProfilDetails();
+    $pseudo = filter_input(INPUT_POST, "tbxNewPseudo");
+    $email = filter_input(INPUT_POST, "tbxNewEmail");
     $oldPass = filter_input(INPUT_POST, "tbxOldPass");
     $newPass = filter_input(INPUT_POST, "tbxNewPass");
     $confirmNewPass = filter_input(INPUT_POST, "tbxConfirmNewPass");        
     foreach ($profilInfos as $key => $value) {
-        if(filter_has_var(INPUT_POST, "btnConfirmUpdate")){
+        if(filter_has_var(INPUT_POST, "btnConfirmUpdate")){           
+            UpdatePseudoReview($pseudo);
+            UpdatePseudoUserHasBooks($pseudo);
+            UpdateUser($pseudo, $email);
             if(!empty($oldPass) && !empty($newPass) && !empty($confirmNewPass)){
                 if(hash("sha256", $oldPass) == $value["password"]){
                     if(hash("sha256", $newPass) != hash("sha256", $oldPass)){
@@ -474,22 +554,22 @@ function UpdatePasswordForm(){
                             return true;
                         }
                         else{
-                            $_SESSION["msg"] = "Les mots de passe ne sont pas identique";
+                            $_SESSION["msg"] = "<h4>Les mots de passe ne sont pas identique</h4>";
                             return false;                        
                         }
                     }
                     else{
-                        $_SESSION["msg"] =  "Votre mot de passe est identique à l'ancien !";
+                        $_SESSION["msg"] =  "<h4>Votre mot de passe est identique à l'ancien !</h4>";
                         return false;
                     }
                 }
                 else{
-                    $_SESSION["msg"] =  "Mot de passe incorrect !";
+                    $_SESSION["msg"] =  "<h4>Mot de passe incorrect !</h4>";
                     return false;
                 }
             }
             else{
-                $_SESSION["msg"] =  "Veuillez remplir tout les champs !";
+                $_SESSION["msg"] =  "<h4>Veuillez remplir tout les champs !</h4>";
                 return false;
             }
         }       
@@ -1122,7 +1202,7 @@ if(filter_has_var(INPUT_POST, "btnAdminEdit")){
     header("Location: admin.php");
 }
 
-// ===== Met à jourles informations du livre (admin) =====
+// ===== Met à jour les informations du livre (admin) =====
 if(filter_has_var(INPUT_POST, "btnEditBook")){
     $newTitle = filter_input(INPUT_POST, "tbxNewTitle");
     $newAuthor = filter_input(INPUT_POST, "tbxNewAuthor");

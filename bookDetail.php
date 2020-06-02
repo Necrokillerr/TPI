@@ -19,7 +19,13 @@
     <body>
         <?php
             echo BookDetailsForm();
-            echo ShowReviewForm();
+            if(isset($_SESSION["IsConnected"])){
+                echo ShowReviewForm();
+            }
+            else{
+                echo "<h4>Connectez-vous pour pouvoir rédiger une critique !</h4>";
+            }
+            
             if(isset($_SESSION["msgAddReview"])){ echo $_SESSION["msgAddReview"]; }         
         ?>
         <h2>Critiques du livre</h2>

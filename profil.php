@@ -6,6 +6,11 @@
 // ========================================== -->
 <?php
     require 'lib.inc.php';
+
+    if(!$_SESSION["IsConnected"]){
+        header("Location: index.php");
+        exit();
+    }
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -25,6 +30,7 @@
         </nav>
         <?php
             echo ProfilDetailsForm();
+            if(isset($_SESSION["msg"])){ echo $_SESSION["msg"]; }
         ?>
         <h2>Critiques en attente de validation</h2>
         <?php

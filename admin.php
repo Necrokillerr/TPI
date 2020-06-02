@@ -10,6 +10,11 @@
     }
 
     require 'lib.inc.php';
+
+    if(!$_SESSION["isAdmin"]){
+        header("Location: index.php");
+        exit();
+    }
 ?>
 <!DOCTYPE html>
 <html lang="fr">

@@ -5,6 +5,10 @@
 // Site de critique de livres
 // ========================================== -->
 <?php
+    if(session_status() == PHP_SESSION_NONE){
+        session_start(); 
+    }
+
     require 'lib.inc.php';
 ?>
 <!DOCTYPE html>
@@ -48,7 +52,7 @@
             }
             else{
                 echo ShowAllBooks();    
-            }
+            }            
         ?>
     </body>
 </html>

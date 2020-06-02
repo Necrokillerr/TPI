@@ -79,18 +79,6 @@ a[name="link"]{
     height: 61%;
 }
 
-label[name="fav"]{
-    display: block;
-    margin-top: -7.5%;
-    margin-left: 60%;
-}
-
-button[name="btnFavori"]{
-    float: right;
-    margin-top: -11%;
-    margin-right: 6%;
-}
-
 button[name="btnAdminEdit"], button[name="btnAdminDelete"]{
     margin-top: 3%;
     margin-left: 9%;

@@ -6,6 +6,11 @@
 // ========================================== -->
 <?php
     require 'lib.inc.php';
+
+    if(!$_SESSION["IsConnected"]){
+        header("Location: index.php");
+        exit();
+    }
 ?>
 <!DOCTYPE html>
 <html lang="fr">
