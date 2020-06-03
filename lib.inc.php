@@ -276,8 +276,11 @@ function ConnectForm(){
                         $form .= "</button>
                         <div class=\"dropdown-child\">
                             <a href=\"profil.php\">Profil</a>
-                            <a href=\"userLibrary.php\">Ma bibliothèque</a>
-                            <a href=\"logout.php\">Deconnexion</a>
+                            <a href=\"userLibrary.php\">Ma bibliothèque</a>";
+                            if(isset($_SESSION["isAdmin"])){
+                                $form .= "<a href=\"admin.php\">Gestionnaire de livres et critiques</a>";
+                            }                           
+                            $form .= "<a href=\"logout.php\">Déconnexion</a>
                         </div>
                     </div><br>";
     }
@@ -329,7 +332,9 @@ EX;
                     $desc .= <<<EX
                     <form method="POST">
                         <label><b>Favori : </b></label>
-                        <button class="fav" value="{$value["isbn"]}" name="btnFavori">★</button>
+                        <div class="fav">
+                            <button value="{$value["isbn"]}" name="btnFavori">★</button>
+                        </div>
                     </form>
 EX;
                 }
@@ -642,7 +647,7 @@ function ShowValidReview(){
     $validReview = GetValidReview();
     $review = null;
     foreach ($validReview as $key => $value) {
-        if(isset($_SESSION["Edit"]) && $_SESSION["Edit"] == true){
+        if(filter_has_var(INPUT_POST, "btnEdit")){
             $review .= <<<EX
             <div class="UserReview">
                 <h3><a href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a></h3>
@@ -687,8 +692,13 @@ function UpdateReview($newContent, $newMark, $id){
     $sql = $db->prepare("UPDATE reviews SET `content` = :newContent, `mark` = :newMark WHERE idReview = :id");
     $sql->bindValue(':newContent', $newContent, PDO::PARAM_STR);
     $sql->bindValue(':newMark', $newMark, PDO::PARAM_STR);
-    $sql->bindValue(':id', $id, PDO::PARAM_STR);    
-    $sql->execute();
+    $sql->bindValue(':id', $id, PDO::PARAM_STR);
+    try{
+        $sql->execute();
+    } catch (Exception $e){
+        echo 'INFOS REQUETE : ',  $e->getMessage(), "\n";
+        exit();
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -788,7 +798,7 @@ function AddBookForm(){
                     <input type=\"text\" class=\"inputInsertBook\" name=\"tbxIsbn\" placeholder=\"ISBN du livre\">
                     <input type=\"text\" class=\"inputInsertBook\" name=\"tbxEditionDate\" placeholder=\"Date d'édition\">
                     <input type=\"file\" class=\"inputInsertBook\" name=\"img[]\">
-                    <input type=\"submit\" name=\"btnAddBook\" value=\"Ajouter une livre\">";
+                    <input type=\"submit\" name=\"btnAddBook\" value=\"Ajouter le livre\">";
             //}               
         }
     $form .= "</form>";
@@ -1133,11 +1143,9 @@ if(filter_has_var(INPUT_POST, "btnUnvalid")){
 // ===== Modification de la critique par l'utilisateur =====
 if(filter_has_var(INPUT_POST, "btnEdit")){
     $id = filter_input(INPUT_POST, "btnEdit");
-    $_SESSION["Edit"] = true;
     if(filter_has_var(INPUT_POST, "btnConfirmEdit")){
         $newReview = filter_input(INPUT_POST, "txtaNewReview");
         $newScore = filter_input(INPUT_POST, "newScore");
-        $_SESSION["Edit"] = null;
         UpdateReview($newReview, $newScore, $id);
     }
 }

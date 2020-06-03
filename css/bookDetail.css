@@ -6,21 +6,20 @@
 // ==========================================*/
 
 h4{
-    text-align: center;
+    margin-left: 41%;
 }
 
 /* ======== Affichage détails du livre ======== */
 .allDescContainer{
-    border: solid 1px red;
+    border: solid 2px black;
     margin: auto;
     display: block;
-    margin-bottom: 4%;
+    margin-bottom: 2%;
     width: 40vw;
     height: 50.2vh;
 }
 
 .imgBook{
-    border: solid 1px green;
     display: inline-block;
     width: 15vw;
     height: 50vh;
@@ -34,27 +33,41 @@ img{
 }
 
 .descContainer{
-    border: solid 1px green;
     float: right;
     width: 22vw;
     height: 20vh;
 }
 
-button[name="btnFavori"]{
-    width: 6%;
-}
-
 .summary{
-    border: solid 1px pink;
     float: right;
     margin-top: -30%;
     width: 22vw;
     height: 24vh;
 }
 
+/* ======== Etoile favori ======== */
+.fav button {
+    border: none;
+    background-color: transparent;
+    float: left;
+    margin-top: -8.7%;
+    margin-left: 14%;
+    width: 1%;
+    color: #aaa;
+    text-decoration: none;
+    font-size: 2em;
+    transition: color .4s;
+ }
+ .fav button:hover,
+ .fav button:focus,
+ .fav button:hover ~ a,
+ .fav button:focus ~ a {
+    color: orange;
+    cursor: pointer;
+ }
+
 /* ======== Formulaire de critique ======== */
 form[name="frmReview"]{
-    border: solid 1px black;
     margin: auto;
     width: 30vw;
 }

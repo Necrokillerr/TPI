@@ -26,7 +26,7 @@
             <?php
                 echo ConnectForm();
             ?>
-            <button><a href="index.php">Acceuil</a></button>
+            <button class="btnHome"><a href="index.php">Acceuil</a></button>
         </nav>
         <?php
             echo ProfilDetailsForm();

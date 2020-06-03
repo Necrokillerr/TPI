@@ -18,6 +18,16 @@ h2{
     width: 40%;
 }
 
+.btnHome{
+    width: 40%;
+    height: 3vh;
+}
+
+.dropdownStyle{
+    margin-left: 6%;
+    width: 90%;
+    height: 3vh;
+}
 
 /* ======== Informations du compte ======== */
 fieldset{
@@ -64,6 +74,12 @@ select{
 input[name="btnConfirmEdit"]{
     margin-top: 4%;
     margin-left: 43%;
-    width: 4vw;
+    width: 5vw;
     height: 3vh;
+}
+
+button{
+    display: inline-block;
+    width: 16%;
+    height: 28px;
 }

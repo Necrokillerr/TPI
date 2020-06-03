@@ -15,6 +15,11 @@ nav{
     min-height: 100vh;
 }
 
+.btnHome{
+    margin-top: 4%;
+    margin-left: 30%;
+}
+
 /* ======== Menu ======== */
 .dropdownStyle {
     background-color: transparent;
@@ -22,16 +27,18 @@ nav{
     border: none;
     cursor: pointer;
     font-size: 16px;
-    width: 100%;
+    width: 90%;
 }
 .boutonMenuPrincipal:hover, .dropdown-child a:hover, .dropdown-child button:hover{
     background-color: transparent;
 }
 .dropdown {
-    border: solid 1px blueviolet;
+    border: solid 1px white;
     position: relative;
     display: inline-block;
-    width: 99%;
+    margin-top: 2%;
+    padding: 1%;
+    width: 98%;
 }
 .dropdown-child {
     display: none;

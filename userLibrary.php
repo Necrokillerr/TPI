@@ -18,6 +18,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" type="text/css" href="css/nav.css">
+    <link rel="stylesheet" type="text/css" href="css/userLibrary.css">
     <link rel="stylesheet" type="text/css" href="css/index.css">
     <title>Ta Bibliothèque</title>
 </head>
@@ -26,6 +27,7 @@
             <?php
                 echo ConnectForm();
             ?>
+            <button class="btnHome"><a href="index.php">Accueil</a></button>
         </nav>    
         <?php
             echo ShowFavBooksForm();

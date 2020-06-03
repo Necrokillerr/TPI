@@ -26,6 +26,7 @@
     <title>Ta Bibliothèque</title>
 </head>
     <body>
+        <button name="btnHome"><a href="index.php">Accueil</a></button>
         <?php
             echo AddBookForm();
             if(isset($_SESSION["msgAddBook"])){ echo $_SESSION["msgAddBook"]; }

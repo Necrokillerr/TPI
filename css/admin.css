@@ -8,6 +8,11 @@ h4{
     text-align: center;
 }
 
+button[name="btnHome"]{
+    margin-left: 47%;
+    width: 6%;
+}
+
 /* ====== Ajout du livre ======== */
 form{
     text-align: center;
