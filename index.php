@@ -41,6 +41,7 @@
                 </div>
             </div>
         </nav>
+        <h1>Accueil</h1>
         <form method="POST">
             <input type="search" name="tbxSearch" placeholder="Rechercher un titre, auteur ou editeur">
             <input type="submit" name="btnSearch" value="Rechercher">

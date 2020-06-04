@@ -9,6 +9,10 @@ h4{
     margin-left: 41%;
 }
 
+h1{
+    margin-left: 45%;
+}
+
 /* ======== Affichage détails du livre ======== */
 .allDescContainer{
     border: solid 2px black;

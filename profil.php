@@ -28,6 +28,7 @@
             ?>
             <button class="btnHome"><a href="index.php">Acceuil</a></button>
         </nav>
+        <h1>Mon profil</h1>
         <?php
             echo ProfilDetailsForm();
             if(isset($_SESSION["msg"])){ echo $_SESSION["msg"]; }

@@ -24,6 +24,7 @@
             ?>
             <button class="btnHome"><a href="index.php">Accueil</a></button>
         </nav>
+        <h1>Détail du livre</h1>
         <?php
             echo BookDetailsForm();
             if(isset($_SESSION["IsConnected"])){

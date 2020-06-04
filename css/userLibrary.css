@@ -2,3 +2,14 @@
     width: 40%;
     height: 3vh;
 }
+
+button[name="btnDeleteLink"]{
+    margin-left: 32%;
+    margin-top: 4%;
+    width: 36%;
+    height: 3vh;
+}
+
+h1{
+    text-align: center;
+}

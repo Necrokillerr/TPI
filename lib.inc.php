@@ -109,15 +109,60 @@ function GetAllBooks(){
     $db = ConnectDB();
     // Filtre par ordre alphabétique - Titre
    if(isset($_SESSION["sortBooks"]) && $_SESSION["sortBooks"] == "Titre"){
-        $sql = $db->prepare("SELECT `isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM books ORDER BY title ASC");
+        $sql = $db->prepare("(
+            SELECT COUNT(idReview) AS nbReviews, ROUND(AVG(mark), 1) AS mark, reviews.isbn, title, author, editor, editionDate, image
+            FROM reviews 
+            JOIN books ON reviews.isbn = books.isbn
+            GROUP BY reviews.isbn
+            )
+            UNION
+            (
+            SELECT null, null AS mark, books.isbn, title, author, editor, editionDate, image
+            FROM books
+            WHERE books.isbn NOT IN (
+                SELECT books.isbn FROM books
+                JOIN reviews ON books.isbn = reviews.isbn
+                GROUP BY reviews.isbn
+            )
+            ) ORDER BY title ASC");
     }
     // Filtre par ordre alphabétique - Auteur
     else if(isset($_SESSION["sortBooks"]) && $_SESSION["sortBooks"] == "Auteur"){
-        $sql = $db->prepare('SELECT `isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM books ORDER BY author ASC');
+        $sql = $db->prepare('(
+            SELECT COUNT(idReview) AS nbReviews, ROUND(AVG(mark), 1) AS mark, reviews.isbn, title, author, editor, editionDate, image
+            FROM reviews 
+            JOIN books ON reviews.isbn = books.isbn
+            GROUP BY reviews.isbn
+            )
+            UNION
+            (
+            SELECT null, null AS mark, books.isbn, title, author, editor, editionDate, image
+            FROM books
+            WHERE books.isbn NOT IN (
+                SELECT books.isbn FROM books
+                JOIN reviews ON books.isbn = reviews.isbn
+                GROUP BY reviews.isbn
+            )
+            ) ORDER BY author ASC');
     }
     // Filtre par ordre alphabétique - Editeur
     else if(isset($_SESSION["sortBooks"]) && $_SESSION["sortBooks"] == "Editeur"){
-        $sql = $db->prepare('SELECT `isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM books ORDER BY editor ASC');
+        $sql = $db->prepare('(
+            SELECT COUNT(idReview) AS nbReviews, ROUND(AVG(mark), 1) AS mark, reviews.isbn, title, author, editor, editionDate, image
+            FROM reviews 
+            JOIN books ON reviews.isbn = books.isbn
+            GROUP BY reviews.isbn
+            )
+            UNION
+            (
+            SELECT null, null AS mark, books.isbn, title, author, editor, editionDate, image
+            FROM books
+            WHERE books.isbn NOT IN (
+                SELECT books.isbn FROM books
+                JOIN reviews ON books.isbn = reviews.isbn
+                GROUP BY reviews.isbn
+            )
+            ) ORDER BY editor ASC');
     }
     // Sans filtre
     else{
@@ -211,7 +256,25 @@ function GetNumberOfReviews(){
  */
 function Search(){
     $db = ConnectDB();
-    $sql = $db->prepare('SELECT * FROM books WHERE title LIKE concat("%", :searching, "%") OR author LIKE concat("%", :searching, "%") OR editor LIKE concat("%", :searching, "%")');
+    $sql = $db->prepare('(
+        SELECT COUNT(idReview) AS nbReviews, ROUND(AVG(mark), 1) AS mark, reviews.isbn, title, author, editor, editionDate, image
+        FROM reviews 
+        JOIN books ON reviews.isbn = books.isbn
+        WHERE title LIKE concat("%", :searching, "%") OR author LIKE concat("%", :searching, "%") OR editor LIKE concat("%", :searching, "%")
+        GROUP BY reviews.isbn
+        )
+        UNION
+        (
+        SELECT null, null AS mark, books.isbn, title, author, editor, editionDate, image
+        FROM books
+        WHERE books.isbn NOT IN (
+        SELECT books.isbn FROM books
+        JOIN reviews ON books.isbn = reviews.isbn
+        WHERE title LIKE concat("%", :searching, "%") OR author LIKE concat("%", :searching, "%") OR editor LIKE concat("%", :searching, "%")
+        GROUP BY reviews.isbn
+        )
+        )
+        ');
     $sql->bindParam(':searching', $_SESSION["search"]);
     $sql->execute();
     $result = $sql->fetchAll(PDO::FETCH_ASSOC);
@@ -229,27 +292,27 @@ function FindedForm(){
     foreach($finded as $key => $value){            
         $tab .= <<<EX
         <div class="allBooksContainer">
-        <div class="bookContainer">
-            <div class="bookImg">
-                <img src="img/{$value['image']}"/>
-            </div>
-            <div class="bookTitle">
-                <strong>
-                    <a name="link" href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a>
-                </strong>
-            </div>
-            <div class="bookScoreFav">
-                <label>Auteur : {$value['author']}</label><br>
-                <label>Editeur : {$value['editor']}</label><br>
-                <label>Nombre de critiques : {$value['nbReviews']}</label><br>
-                <label>Note : {$value['mark']}</label>
+                    <div class="bookContainer">
+                        <div class="bookImg">
+                            <img src="img/{$value['image']}"/>
+                        </div>
+                        <div class="bookTitle">
+                            <strong>
+                                <a name="link" href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a>
+                            </strong>
+                        </div>
+                        <div class="bookScoreFav">
+                            <label>Auteur : {$value['author']}</label><br>
+                            <label>Editeur : {$value['editor']}</label><br>
+                            <label>Nombre de critiques : {$value['nbReviews']}</label><br>
+                            <label>Note : {$value['mark']}</label>
 EX;
-
-        if(isset($_SESSION["IsConnected"])){
-            $tab .= <<<EX
-            <form method="POST">
-                <button value="{$value["isbn"]}" name="btnFavori">★</button>
-            </form>
+            if(isset($_SESSION["isAdmin"])){
+                $tab .= <<<EX
+                <form method="POST">
+                    <button value="{$value["isbn"]}" name="btnAdminEdit">Modifier</button>
+                    <button value="{$value["isbn"]}" name="btnAdminDelete">Supprimer</button>
+                </form>
 EX;
         }
         $tab .= "</div></div></div>";
@@ -489,28 +552,6 @@ function ProfilDetailsForm(){
 }
 
 /**
- * Met à jour le champs pseudo de la table users_has_books
- */
-function UpdatePseudoUserHasBooks($newPseudo){
-    $db = ConnectDB();
-    $sql = $db->prepare("UPDATE users_has_books SET `pseudo` = :newPseudo WHERE pseudo = :Pseudo");
-    $sql->bindParam(':newPseudo', $newPseudo, PDO::PARAM_STR);
-    $sql->bindParam(':Pseudo', $_SESSION["StockedNickname"], PDO::PARAM_STR);  
-    $sql->execute();
-}
-
-/**
- * Met à jour le champs pseudo de la table reviews
- */
-function UpdatePseudoReview($newPseudo){
-    $db = ConnectDB();
-    $sql = $db->prepare("UPDATE reviews SET `pseudo` = :newPseudo WHERE pseudo = :Pseudo");
-    $sql->bindParam(':newPseudo', $newPseudo, PDO::PARAM_STR);
-    $sql->bindParam(':Pseudo', $_SESSION["StockedNickname"], PDO::PARAM_STR);  
-    $sql->execute();
-}
-
-/**
  * Met à jour les informations (pseudo et email) dans la base de données
  */
 function UpdateUser($newPseudo, $newEmail){
@@ -547,14 +588,12 @@ function UpdatePasswordForm(){
     $confirmNewPass = filter_input(INPUT_POST, "tbxConfirmNewPass");        
     foreach ($profilInfos as $key => $value) {
         if(filter_has_var(INPUT_POST, "btnConfirmUpdate")){           
-            UpdatePseudoReview($pseudo);
-            UpdatePseudoUserHasBooks($pseudo);
-            UpdateUser($pseudo, $email);
             if(!empty($oldPass) && !empty($newPass) && !empty($confirmNewPass)){
                 if(hash("sha256", $oldPass) == $value["password"]){
                     if(hash("sha256", $newPass) != hash("sha256", $oldPass)){
                         if(hash("sha256", $newPass) == hash("sha256", $confirmNewPass)){
                             $_SESSION["msg"] =  "Votre mot de passe à bien été changé !";
+                            UpdateUser($pseudo, $email);
                             UpdatePassword(hash("sha256", $newPass));
                             return true;
                         }
@@ -727,23 +766,33 @@ function AddToFavList($pseudo, $idBook){
     return true;
 }
 
+/**
+ * Récupère les livres favori de l'utilisateur
+ * 
+ * Retourne un tableau
+ */
 function GetFavBooks(){
     $db = ConnectDB();
     // récupère les films favoris
     $sql = $db->prepare('(
-        SELECT ROUND(AVG(mark) ,1) AS `mark`, books.`isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM reviews
-        JOIN books ON books.isbn = reviews.isbn
-        WHERE `pseudo` = :Pseudo
-        GROUP BY reviews.`isbn`
+        SELECT COUNT(idReview) AS nbReviews, ROUND(AVG(mark), 1) AS mark, reviews.isbn, title, author, editor, editionDate, image
+        FROM reviews 
+        JOIN books ON reviews.isbn = books.isbn
+        JOIN users_has_books ON books.isbn = users_has_books.isbn
+        WHERE users_has_books.pseudo = :Pseudo
+        GROUP BY reviews.isbn
         )
         UNION
         (
-        SELECT null AS `mark`, books.`isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM books
+        SELECT null, null AS mark, books.isbn, title, author, editor, editionDate, image
+        FROM books
+        JOIN users_has_books ON books.isbn = users_has_books.isbn
         WHERE books.isbn NOT IN (
-        SELECT books.`isbn` FROM reviews
-        JOIN books ON books.isbn = reviews.isbn
-        WHERE `pseudo` = :Pseudo
-        GROUP BY reviews.`isbn`)
+            SELECT books.isbn FROM books
+            JOIN reviews ON books.isbn = reviews.isbn
+            GROUP BY reviews.isbn
+        )
+        AND users_has_books.pseudo = :Pseudo
         )');
     $sql->bindParam(':Pseudo', $_SESSION["StockedNickname"]);
     $sql->execute();
@@ -751,17 +800,25 @@ function GetFavBooks(){
     return $result;
 }
 
+/**
+ * Affiche les livres récupéré par GetFavBooks()
+ * 
+ * Retourne de l'HTML
+ */
 function ShowFavBooksForm(){
-    $favMovies = GetFavBooks();
+    $favBooks = GetFavBooks();
     $tab = null;
-    foreach($favMovies as $key => $value){       
+    if(empty($favBooks)){
+        $_SESSION["msgEmpty"] = "<h4>Votre bibliothèque est vide !</h4>";
+    }
+    foreach($favBooks as $key => $value){       
         $tab .= <<<EX
                 <div class="allBooksContainer">
                     <div class="bookContainer">
                         <div class="bookImg">
                             <img src="img/{$value['image']}"/>
                         </div>
-                        <div class="bookTitle">
+                        <div class="bookTitle">                           
                             <strong>
                                 <a name="link" href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a>
                             </strong>
@@ -770,10 +827,26 @@ function ShowFavBooksForm(){
                             <label>Auteur : {$value['author']}</label><br>
                             <label>Editeur : {$value['editor']}</label><br>
                             <label>Note : {$value['mark']}</label>
+                            <form method="POST">
+                                <button name="btnDeleteLink" value="{$value['isbn']}">Supprimer</button>
+                            </form>
 EX;
         $tab .= "</div></div></div>";
     }
     return $tab;
+}
+
+/**
+ * Supprime le lien entre l'utilisateur et le livre
+ */
+function DeleteToFavList($id, $pseudo){
+    $db = ConnectDB();
+    $sql = $db->prepare("SET SQL_SAFE_UPDATES = 0;
+                         DELETE FROM users_has_books WHERE isbn = :Id AND pseudo = :Pseudo;
+                         SET SQL_SAFE_UPDATES = 1;");
+    $sql->bindParam(':Id', $id);
+    $sql->bindParam(':Pseudo', $pseudo, PDO::PARAM_STR);
+    $sql->execute();
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -1182,6 +1255,13 @@ if(filter_has_var(INPUT_POST, "btnFavori")){
     $favBook = $_POST["btnFavori"];
     $pseudo = $_SESSION["StockedNickname"];
     AddToFavList($pseudo, $favBook);
+}
+
+// ===== Suppression d'un livre de la bibliothèque =====
+if(filter_has_var(INPUT_POST, "btnDeleteLink")){
+    $favBook = $_POST["btnDeleteLink"];
+    $pseudo = $_SESSION["StockedNickname"];
+    DeleteToFavList($pseudo, $favBook);
 }
 
 // ===== Ajout d'un livre dans le site (admin) =====

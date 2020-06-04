@@ -5,6 +5,10 @@
 // Site de critique de livres
 // ========================================== -->
 <?php
+    if(session_status() == PHP_SESSION_NONE){
+        session_start(); 
+    }
+
     require 'lib.inc.php';
 
     if(!$_SESSION["IsConnected"]){
@@ -28,8 +32,11 @@
                 echo ConnectForm();
             ?>
             <button class="btnHome"><a href="index.php">Accueil</a></button>
-        </nav>    
+        </nav> 
+        <h1>Ma bibliothèque</h1>   
         <?php
+            if(isset($_SESSION["msgEmpty"])){ echo $_SESSION["msgEmpty"]; }
+
             echo ShowFavBooksForm();
         ?>
     </body>
