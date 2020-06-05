@@ -9,6 +9,7 @@
 if(session_status() == PHP_SESSION_NONE){
     session_start(); 
 }
+
 $_SESSION["msg"] = "";
 $_SESSION["msgAddBook"] = "";
 $_SESSION["msgAddReview"] = "";
@@ -363,7 +364,9 @@ function ConnectForm(){
  */
 function GetBookDetails(){
     $db = ConnectDB();
-    $sql = $db->prepare("SELECT `isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM books WHERE isbn = :isbn");
+    $sql = $db->prepare("SELECT ROUND(AVG(`mark`), 1) AS mark, books.`isbn`, `title`, `author`, `editor`, `summary`, `editionDate`, `image` FROM books 
+            JOIN reviews ON reviews.isbn = books.isbn
+            WHERE books.isbn = :isbn");
     $sql->bindParam(':isbn', $_GET["id"]);
     $sql->execute();
     $result = $sql->fetchAll(PDO::FETCH_ASSOC);
@@ -388,12 +391,14 @@ function BookDetailsForm(){
                     <h3>{$value['title']}</h3>
                     <p><b>Auteur : </b>{$value['author']}</p>
                     <p><b>Éditeur : </b>{$value['editor']}</p>
+                    <p><b>ISBN : </b>{$value['isbn']}</p>
                     <p><b>Date d'édition : </b>{$value['editionDate']}</p>
 EX;
 
                 if(isset($_SESSION["IsConnected"])){
                     $desc .= <<<EX
-                    <form method="POST">
+                    <p><b>Note : </b>{$value['mark']}</p>
+                    <form name="favBook" method="POST">
                         <label><b>Favori : </b></label>
                         <div class="fav">
                             <button value="{$value["isbn"]}" name="btnFavori">★</button>
@@ -472,7 +477,7 @@ function GetValidReviewOfBook(){
     $sql = $db->prepare('SELECT `date`, `content`, `mark`, `pseudo`, reviews.`isbn`, `title` FROM reviews 
         JOIN books
             ON books.isbn = reviews.isbn
-        WHERE isValid = 1 AND reviews.isbn = :id');
+        WHERE isValid = 1 AND reviews.isbn = :id ORDER BY idReview DESC');
         $sql->bindParam(':id', $_GET["id"]);
     $sql->execute();
     $result = $sql->fetchAll(PDO::FETCH_ASSOC);   
@@ -588,7 +593,7 @@ function UpdatePasswordForm(){
     $confirmNewPass = filter_input(INPUT_POST, "tbxConfirmNewPass");        
     foreach ($profilInfos as $key => $value) {
         if(filter_has_var(INPUT_POST, "btnConfirmUpdate")){           
-            if(!empty($oldPass) && !empty($newPass) && !empty($confirmNewPass)){
+            if(!empty($oldPass) && !empty($newPass) && !empty($confirmNewPass) && !empty($pseudo) && !empty($email)){
                 if(hash("sha256", $oldPass) == $value["password"]){
                     if(hash("sha256", $newPass) != hash("sha256", $oldPass)){
                         if(hash("sha256", $newPass) == hash("sha256", $confirmNewPass)){

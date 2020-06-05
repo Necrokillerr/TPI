@@ -19,7 +19,7 @@ h1{
     margin: auto;
     display: block;
     margin-bottom: 2%;
-    width: 40vw;
+    width: 38vw;
     height: 50.2vh;
 }
 
@@ -38,24 +38,34 @@ img{
 
 .descContainer{
     float: right;
-    width: 22vw;
-    height: 20vh;
+    width: 20vw;
+    height: 26vh;
 }
 
 .summary{
     float: right;
-    margin-top: -30%;
-    width: 22vw;
-    height: 24vh;
+    margin-top: -24%;
+    width: 20vw;
+    height: 19vh;
 }
+
+form[name="favBook"]{
+    display: block;
+    float: right;
+    margin-top: -9%;
+    margin-right: 20%;
+    width: 40%;
+}
+
+
 
 /* ======== Etoile favori ======== */
 .fav button {
     border: none;
     background-color: transparent;
-    float: left;
-    margin-top: -8.7%;
-    margin-left: 14%;
+    float: right;
+    margin-top: -22%;
+    margin-right: 50%;
     width: 1%;
     color: #aaa;
     text-decoration: none;
