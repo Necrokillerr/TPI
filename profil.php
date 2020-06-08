@@ -1,10 +1,11 @@
-<!-- ==========================================
+<?php
+// ==========================================
 // Charneco Samuel
 // 25.05.2020
 // Version 1.0
 // Site de critique de livres
-// ========================================== -->
-<?php
+// ==========================================
+
     require 'lib.inc.php';
 
     if(!$_SESSION["IsConnected"]){
@@ -26,7 +27,7 @@
             <?php
                 echo ConnectForm();
             ?>
-            <button class="btnHome"><a href="index.php">Acceuil</a></button>
+            <button class="btnHome"><a href="index.php">Accueil</a></button>
         </nav>
         <h1>Mon profil</h1>
         <?php
@@ -34,11 +35,13 @@
             if(isset($_SESSION["msg"])){ echo $_SESSION["msg"]; }
         ?>
         <h2>Critiques en attente de validation</h2>
-        <?php
+        <?php           
             echo ShowNotValidReview();
         ?>
         <h2>Vos critiques</h2>
         <?php
+            if(isset($_SESSION["msgEditReview"])){ echo $_SESSION["msgEditReview"]; }
+
             echo ShowValidReview();
         ?>
     </body>

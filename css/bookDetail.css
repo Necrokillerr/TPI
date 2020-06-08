@@ -13,6 +13,10 @@ h1{
     margin-left: 45%;
 }
 
+.btnNav{
+    margin-top: 6%;
+}
+
 /* ======== Affichage détails du livre ======== */
 .allDescContainer{
     border: solid 2px black;
@@ -56,8 +60,6 @@ form[name="favBook"]{
     margin-right: 20%;
     width: 40%;
 }
-
-
 
 /* ======== Etoile favori ======== */
 .fav button {

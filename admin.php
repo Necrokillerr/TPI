@@ -1,10 +1,11 @@
-<!-- ==========================================
+<?php
+// ==========================================
 // Charneco Samuel
 // 25.05.2020
 // Version 1.0
 // Site de critique de livres
-// ========================================== -->
-<?php
+// ==========================================
+
     if(session_status() == PHP_SESSION_NONE){
         session_start(); 
     }
@@ -22,11 +23,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" type="text/css" href="css/review.css">
+    <link rel="stylesheet" type="text/css" href="css/nav.css">
     <link rel="stylesheet" type="text/css" href="css/admin.css">
     <title>Ta Bibliothèque</title>
 </head>
     <body>
-        <button name="btnHome"><a href="index.php">Accueil</a></button>
+        <nav>
+            <?php
+                echo ConnectForm();
+            ?>
+            <button class="btnHome"><a href="index.php">Accueil</a></button>
+        </nav>      
         <?php
             echo AddBookForm();
             if(isset($_SESSION["msgAddBook"])){ echo $_SESSION["msgAddBook"]; }

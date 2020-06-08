@@ -1,10 +1,10 @@
-<!-- ==========================================
+<?php
+// ==========================================
 // Charneco Samuel
 // 25.05.2020
 // Version 1.0
 // Site de critique de livres
-// ========================================== -->
-<?php
+// ==========================================
     if(session_status() == PHP_SESSION_NONE){
         session_start(); 
     }
@@ -25,7 +25,7 @@
             <label>Pseudo</label>
             <input type="text" name="tbxLoginNickname" placeholder="Entrez votre pseudo">
             <label>Mot de passe</label>
-            <input type="password" name="tbxLoginPassword" placeholder="Entrez votre mot de passe">
+            <input type="password" name="tbxLoginPassword" placeholder="Entrez votre mot de passe">           
             <input type="submit" name="btnLogin" value="Connexion">
             <a href="register.php">s'inscrire</a>
             <?php

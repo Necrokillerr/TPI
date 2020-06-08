@@ -24,17 +24,12 @@ h1, h3, h4{
 }
 
 /* ======== champ de recherche ======== */
-input[name="tbxSearch"]{
-    margin-left: 32.7%;
+input[name="btnShowSearchForm"]{
+    margin-left: 36%;
 }
 
-button[name="btnFavori"] {
-    padding: 0;
-    margin: 0;
-    font-size: 24px;
-    width: auto;
-    background: none;
-    border: none;
+input[name="tbxSearchTitle"]{
+    margin-left: 25%;
 }
 
 /* ======== Affichage des livres et des informations ======== */
@@ -87,7 +82,7 @@ a[name="link"]{
 
 button[name="btnAdminEdit"], button[name="btnAdminDelete"]{
     margin-top: 3%;
-    margin-left: 9%;
+    margin-left: 10%;
     width: 32%;
     height: 2.5vh;
 }

@@ -10,10 +10,17 @@ if(session_status() == PHP_SESSION_NONE){
     session_start(); 
 }
 
+require "db/credentials.php";
+
 $_SESSION["msg"] = "";
 $_SESSION["msgAddBook"] = "";
 $_SESSION["msgAddReview"] = "";
 $_SESSION["msgUpdateBook"] = "";
+$_SESSION["msgSearch"] = "";
+$_SESSION["msgEditReview"] = "";
+$_SESSION["msgFav"] = "";
+$_SESSION["savedReview"] = "";
+$salt = "12983476";
 
 // ----------------------------------------------------------------------------------------------------------
 // ------------------------------------- CONNEXION À LA BASE DE DONNÉES -------------------------------------
@@ -28,7 +35,7 @@ function ConnectDB(){
 
     if($db == null){
         try{
-            $db = new PDO('mysql:host=localhost;dbname=dbtpi;port=3306','adminTpi','tpi2020');
+            $db = new PDO('mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';port='. DB_PORT, DB_USER, DB_PASS);
             $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         }
         catch(PDOException $e) {
@@ -219,7 +226,7 @@ function ShowAllBooks(){
                             <label>Auteur : {$value['author']}</label><br>
                             <label>Editeur : {$value['editor']}</label><br>
                             <label>Nombre de critiques : {$value['nbReviews']}</label><br>
-                            <label>Note : {$value['mark']}</label>
+                            <label>Note : {$value['mark']}</label><br>
 EX;
 
             if(isset($_SESSION["isAdmin"])){
@@ -251,6 +258,39 @@ function GetNumberOfReviews(){
 }
 
 /**
+ * Affiche le formulaire de recherche d'un livre
+ * 
+ * Retourne de l'HTML
+ */
+function SearchForm(){
+    $form = null;
+    $form .= <<<EX
+    <form method="POST">
+EX;
+        if(filter_has_var(INPUT_POST, "btnShowSearchForm")){
+            
+                $form .= <<<EX
+                    <input type="search" name="tbxSearchTitle" placeholder="Rechercher un titre">
+                    <input type="search" name="tbxSearchAuthor" placeholder="Rechercher un auteur">
+                    <input type="search" name="tbxSearchEditor" placeholder="Rechercher un editeur">
+                    <input type="submit" name="btnSearch" value="Rechercher">
+EX;
+           
+        }
+        else{
+            $form .= <<<EX
+            <input type="submit" name="btnShowSearchForm" value="Faire une recherche">
+            <input type="submit" name="btnResetFilter" value="Retirer filtre">
+EX;
+        }
+        
+    $form .= <<<EX
+    </from>
+EX;
+    return $form;
+}
+
+/**
  * Récupère les livres qui concerne la recherche de l'utilisateur
  * 
  * Retourne un tableau
@@ -261,7 +301,7 @@ function Search(){
         SELECT COUNT(idReview) AS nbReviews, ROUND(AVG(mark), 1) AS mark, reviews.isbn, title, author, editor, editionDate, image
         FROM reviews 
         JOIN books ON reviews.isbn = books.isbn
-        WHERE title LIKE concat("%", :searching, "%") OR author LIKE concat("%", :searching, "%") OR editor LIKE concat("%", :searching, "%")
+        WHERE title LIKE :Title AND author LIKE :Author AND editor LIKE :Editor
         GROUP BY reviews.isbn
         )
         UNION
@@ -271,12 +311,14 @@ function Search(){
         WHERE books.isbn NOT IN (
         SELECT books.isbn FROM books
         JOIN reviews ON books.isbn = reviews.isbn
-        WHERE title LIKE concat("%", :searching, "%") OR author LIKE concat("%", :searching, "%") OR editor LIKE concat("%", :searching, "%")
         GROUP BY reviews.isbn
         )
-        )
+        AND title LIKE :Title AND author LIKE :Author AND editor LIKE :Editor
+        )       
         ');
-    $sql->bindParam(':searching', $_SESSION["search"]);
+    $sql->bindParam(':Title', $_SESSION["searchTitle"]);
+    $sql->bindParam(':Author', $_SESSION["searchAuthor"]);
+    $sql->bindParam(':Editor', $_SESSION["searchEditor"]);
     $sql->execute();
     $result = $sql->fetchAll(PDO::FETCH_ASSOC);
     return $result;
@@ -290,6 +332,9 @@ function Search(){
 function FindedForm(){
     $finded = Search();
     $tab = null;
+    if(empty($finded)){
+        $_SESSION["msgSearch"] = "<br><h3>Aucun livres trouvé</h3><p><h3>Réessayer votre recherche avec moins de filtre !</h3></p>";
+    }
     foreach($finded as $key => $value){            
         $tab .= <<<EX
         <div class="allBooksContainer">
@@ -424,11 +469,17 @@ EX;
  * Retourne un formulaire HTML
  */
 function ShowReviewForm(){
-    $reviewForm = null;
+    $reviewForm = null;    
+    if(isset($_SESSION["savedReview"])){
+        $savedReview = $_SESSION["savedReview"];
+    }
+    else{
+        $savedReview = null;
+    }
     $reviewForm .= '<form name="frmReview" method="POST">
                         <label>Critique : </label>
                         <label id="score">Donner une note : </label>
-                        <textarea name="txtaReview" placeholder="Rédiger une critique"></textarea>                      
+                        <textarea name="txtaReview" placeholder="Rédiger une critique">'.$savedReview.'</textarea>
                         <select name="scoreBook">
                             <option value="">--</option>
                             <option value="1">1</option>
@@ -531,20 +582,23 @@ function GetProfilDetails(){
 function ProfilDetailsForm(){
     $profilDetails = GetProfilDetails();
     foreach ($profilDetails as $key => $value) {
-        $infos = "
+        $infos = <<<EX
         <fieldset>
             <legend>Informations du compte</legend>           
-            <form action=\"profil.php\" method=\"POST\">
-                <input type=\"submit\" class=\"inputUpdatePassword\" name=\"btnUpdatePassword\" value=\"Modifier le compte\"><br>";
+            <form action="profil.php" method="POST">
+                <input type="submit" class="inputUpdatePassword" name="btnUpdatePassword" value="Modifier le compte"><br>
+EX;
             if(filter_has_var(INPUT_POST, "btnUpdatePassword") || filter_has_var(INPUT_POST, "btnConfirmUpdate")){
                 if(!UpdatePasswordForm()){
-                    $infos .= "
-                        <label>Pseudo : </label><input type=\"text\" name=\"tbxNewPseudo\" value=".$value["pseudo"]."><br>
-                        <label>E-mail : </label><input type=\"email\" name=\"tbxNewEmail\" value=".$value["email"]."><br>
-                        <input type=\"password\" class=\"inputUpdatePassword\" name=\"tbxOldPass\" placeholder=\"Ancien mot de passe\"><br>
-                        <input type=\"password\" class=\"inputUpdatePassword\" name=\"tbxNewPass\" placeholder=\"Nouveau mot de passe\"><br>
-                        <input type=\"password\" class=\"inputUpdatePassword\" name=\"tbxConfirmNewPass\" placeholder=\"Confirmer le nouveau mot de passe\">                
-                        <input type=\"submit\" name=\"btnConfirmUpdate\" value=\"Mettre à jour\">";
+                    $infos .= <<<EX
+                        <label>Pseudo : </label><input type="text" name="tbxNewPseudo" value={$value["pseudo"]}><br>
+                        <label>E-mail : </label><input type="email" name="tbxNewEmail" value={$value["email"]}><br>
+                        <label>Ancien mot de passe : </label><input type="password" class="inputUpdatePassword" name="tbxOldPass" placeholder="Ancien mot de passe"><br>
+                        <label>Nouveau mot de passe : </label><input type="password" class="inputUpdatePassword" name="tbxNewPass" placeholder="Nouveau mot de passe"><br>
+                        <label id="info"><b>Pour une meilleur sécurité du mot de passe, mélangez : lettres, chiffres et caractère spéciaux !</b></label>
+                        <label>Confirmer mot de passe : </label><input type="password" class="inputUpdatePassword" name="tbxConfirmNewPass" placeholder="Confirmer le nouveau mot de passe"><br>
+                        <input type="submit" name="btnConfirmUpdate" value="Mettre à jour">
+EX;
                 }
             }
             else{
@@ -564,8 +618,9 @@ function UpdateUser($newPseudo, $newEmail){
     $sql = $db->prepare("UPDATE users SET `pseudo` = :newPseudo, `email` = :newEmail WHERE pseudo = :Pseudo");
     $sql->bindParam(':newPseudo', $newPseudo, PDO::PARAM_STR);
     $sql->bindParam(':newEmail', $newEmail, PDO::PARAM_STR);
-    $sql->bindParam(':Pseudo', $_SESSION["StockedNickname"], PDO::PARAM_STR);  
+    $sql->bindParam(':Pseudo', $_SESSION["StockedNickname"], PDO::PARAM_STR);
     $sql->execute();
+    $_SESSION["StockedNickname"] = $newPseudo;
 }
 
 /**
@@ -586,20 +641,21 @@ function UpdatePassword($password){
  */ 
 function UpdatePasswordForm(){
     $profilInfos = GetProfilDetails();
+    $salt = isset($_SESSION["salt"]);
     $pseudo = filter_input(INPUT_POST, "tbxNewPseudo");
     $email = filter_input(INPUT_POST, "tbxNewEmail");
     $oldPass = filter_input(INPUT_POST, "tbxOldPass");
     $newPass = filter_input(INPUT_POST, "tbxNewPass");
-    $confirmNewPass = filter_input(INPUT_POST, "tbxConfirmNewPass");        
+    $confirmNewPass = filter_input(INPUT_POST, "tbxConfirmNewPass");
     foreach ($profilInfos as $key => $value) {
         if(filter_has_var(INPUT_POST, "btnConfirmUpdate")){           
             if(!empty($oldPass) && !empty($newPass) && !empty($confirmNewPass) && !empty($pseudo) && !empty($email)){
-                if(hash("sha256", $oldPass) == $value["password"]){
-                    if(hash("sha256", $newPass) != hash("sha256", $oldPass)){
-                        if(hash("sha256", $newPass) == hash("sha256", $confirmNewPass)){
-                            $_SESSION["msg"] =  "Votre mot de passe à bien été changé !";
+                if(hash("sha256", $oldPass.$salt) == $value["password"]){
+                    if(hash("sha256", $newPass.$salt) != hash("sha256", $oldPass.$salt)){
+                        if(hash("sha256", $newPass.$salt) == hash("sha256", $confirmNewPass.$salt)){
                             UpdateUser($pseudo, $email);
-                            UpdatePassword(hash("sha256", $newPass));
+                            UpdatePassword(hash("sha256", $newPass.$salt));
+                            header("Location: profil.php");
                             return true;
                         }
                         else{
@@ -651,16 +707,37 @@ function ShowNotValidReview(){
     $notValidReview = GetNotValidReview();
     $review = null;
     foreach ($notValidReview as $key => $value) {
-        $review .= <<<EX
-        <div class="UserReview">
-            <h3><a href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a></h3>
-            <form method="POST">
-                <button name="btnEdit" value={$value['idReview']}>Modifier</button>
-                <button name="btnDelete" value={$value['idReview']}>Supprimer</button>
-            </form>
-            <p>{$value["content"]}</p>
-        </div>
+        if(filter_has_var(INPUT_POST, "btnEdit") && filter_input(INPUT_POST, "btnEdit") == $value["idReview"]){
+            $review .= <<<EX
+            <div class="UserReview">
+                <h3><a href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a></h3>
+                <form method="POST">
+                    <textarea name="txtaNewReview">{$value["content"]}</textarea>
+                    <select name="newScore">
+                        <option value="">--</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                    </select>
+                    <button type="submit" name="btnConfirmEdit" value={$value['idReview']}>Mettre à jour</button>
+                </form>
+            </div>         
+EX;       
+        }
+        else{
+            $review .= <<<EX
+            <div class="UserReview">
+                <h3><a href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a></h3>
+                <form method="POST">
+                    <button name="btnEdit" value={$value['idReview']}>Modifier</button>
+                    <button name="btnDelete" value={$value['idReview']}>Supprimer</button>
+                </form>
+                <p>{$value["content"]}</p>
+            </div>
 EX;
+        }
     }
     return $review;
 }
@@ -691,26 +768,24 @@ function ShowValidReview(){
     $validReview = GetValidReview();
     $review = null;
     foreach ($validReview as $key => $value) {
-        if(filter_has_var(INPUT_POST, "btnEdit")){
-            $review .= <<<EX
-            <div class="UserReview">
-                <h3><a href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a></h3>
-                <form method="POST">
-                    <textarea name="txtaNewReview">{$value["content"]}</textarea>
-                    <select name="newScore">
-                        <option value="">--</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5</option>
-                    </select>
-                    <input type="submit" name="btnConfirmEdit" value="Mettre à jour">
-                </form>
-            </div>
-            
+        if(filter_has_var(INPUT_POST, "btnEdit") && filter_input(INPUT_POST, "btnEdit") == $value["idReview"]){
+                $review .= <<<EX
+                <div class="UserReview">
+                    <h3><a href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a></h3>
+                    <form method="POST">
+                        <textarea name="txtaNewReview">{$value["content"]}</textarea>
+                        <select name="newScore">
+                            <option value="">{$value['mark']}</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                        <button type="submit" name="btnConfirmEdit" value={$value['idReview']}>Mettre à jour</button>
+                    </form>
+                </div>              
 EX;
-
         }
         else{
             $review .= <<<EX
@@ -720,6 +795,7 @@ EX;
                 <button name="btnEdit" value={$value['idReview']}>Modifier</button>
                 <button name="btnDelete" value={$value['idReview']}>Supprimer</button>
             </form>
+            <label class="reviewMark"><b>Note : </b>{$value['mark']}</label>
             <p>{$value["content"]}</p>
         </div>
 EX;
@@ -734,9 +810,9 @@ EX;
 function UpdateReview($newContent, $newMark, $id){
     $db = ConnectDB();
     $sql = $db->prepare("UPDATE reviews SET `content` = :newContent, `mark` = :newMark WHERE idReview = :id");
-    $sql->bindValue(':newContent', $newContent, PDO::PARAM_STR);
-    $sql->bindValue(':newMark', $newMark, PDO::PARAM_STR);
-    $sql->bindValue(':id', $id, PDO::PARAM_STR);
+    $sql->bindParam(':newContent', $newContent, PDO::PARAM_STR);
+    $sql->bindParam(':newMark', $newMark, PDO::PARAM_STR);
+    $sql->bindParam(':id', $id, PDO::PARAM_STR);
     try{
         $sql->execute();
     } catch (Exception $e){
@@ -748,6 +824,24 @@ function UpdateReview($newContent, $newMark, $id){
 // ---------------------------------------------------------------------------------------------------------
 // ----------------------------------- MA BIBLIOTHEQUE (userLibrary.php) -----------------------------------
 // ---------------------------------------------------------------------------------------------------------
+/**
+ * Ajoute un lien entre l'utilisateur et le livre
+ * 
+ * Param : $pseudo (Pesudo de l'utilisateur)
+ *         $idBook (ISBN du livre à ajouter)
+ * 
+ * Retourne true ou false
+ */
+function IsAlreadyInFavList($pseudo, $isbn){
+    $db = ConnectDB();
+    $sql = $db->prepare('SELECT `isbn`, `pseudo` FROM users_has_books WHERE isbn = :isbn AND pseudo = :Pseudo');
+    $sql->bindParam(':isbn', $isbn, PDO::PARAM_STR);
+    $sql->bindParam(':Pseudo', $_SESSION["StockedNickname"], PDO::PARAM_STR);
+    $sql->execute();
+    $result = $sql->fetchAll(PDO::FETCH_ASSOC);   
+    return $result;
+}
+
 /**
  * Ajoute un lien entre l'utilisateur et le livre
  * 
@@ -845,13 +939,15 @@ EX;
  * Supprime le lien entre l'utilisateur et le livre
  */
 function DeleteToFavList($id, $pseudo){
-    $db = ConnectDB();
-    $sql = $db->prepare("SET SQL_SAFE_UPDATES = 0;
-                         DELETE FROM users_has_books WHERE isbn = :Id AND pseudo = :Pseudo;
-                         SET SQL_SAFE_UPDATES = 1;");
-    $sql->bindParam(':Id', $id);
-    $sql->bindParam(':Pseudo', $pseudo, PDO::PARAM_STR);
-    $sql->execute();
+    try{
+        $db = ConnectDB();
+        $sql = $db->prepare("DELETE FROM users_has_books WHERE isbn = :Id AND pseudo = :Pseudo");
+        $sql->bindParam(':Id', $id);
+        $sql->bindParam(':Pseudo', $pseudo, PDO::PARAM_STR);
+        $sql->execute();
+    } catch (Exception $e){
+        echo $e->getMessage();
+    }
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -1148,7 +1244,7 @@ if(filter_has_var(INPUT_POST, 'btnLogin')){
     $nickname = filter_input(INPUT_POST, "tbxLoginNickname");
     $password = filter_input(INPUT_POST, "tbxLoginPassword");
     if(!empty($nickname) && !empty($password)){
-        $hashPassword = hash("sha256", $password);
+        $hashPassword = hash("sha256", $password.$salt);
         if(LoginUser($nickname, $hashPassword)){
             header("Location: index.php");
         }
@@ -1169,10 +1265,11 @@ if(filter_has_var(INPUT_POST, 'btnRegister')){
     $confirmPassword = filter_input(INPUT_POST, "tbxRegisterConfirmPassword");
 
     if(!empty($nickname) && !empty($email) && !empty($password)){
-        $hachedPass = hash("sha256", $password);
-        $hachedConfirmPass = hash("sha256", $confirmPassword);
+        $hachedPass = hash("sha256", $password.$salt);
+        $hachedConfirmPass = hash("sha256", $confirmPassword.$salt);
         if($hachedPass == $hachedConfirmPass){
-            if(InsertUser($nickname, $email, $hachedPass)){           
+            if(InsertUser($nickname, $email, $hachedPass)){
+                $_SESSION["salt"] = $salt;
                 $_SESSION["msg"] = "Votre compte à bien été enregistré";
             }
             else{
@@ -1188,13 +1285,13 @@ if(filter_has_var(INPUT_POST, 'btnRegister')){
     }
 }
 
-// ===== Note du livre et critique =====
+// ===== Ajout note du livre et critique =====
 if(filter_has_var(INPUT_POST, 'btnPost')){
     $review = filter_input(INPUT_POST, "txtaReview");
     $score = filter_input(INPUT_POST, "scoreBook");
     if($review != "" && $score != ""){
         if(addReview($review, $score)){
-            
+            $_SESSION["savedReview"] == null;
             $_SESSION["msgAddReview"] = "<h4>Critique envoyer à l'administrateur</h4>";
         }
         else{
@@ -1202,6 +1299,7 @@ if(filter_has_var(INPUT_POST, 'btnPost')){
         }
     }
     else{
+        $_SESSION["savedReview"] = $review;
         $_SESSION["msgAddReview"] = "<h4>Veuillez compléter tous les champs</h4>";
     }
 }
@@ -1219,11 +1317,14 @@ if(filter_has_var(INPUT_POST, "btnUnvalid")){
 }
 
 // ===== Modification de la critique par l'utilisateur =====
-if(filter_has_var(INPUT_POST, "btnEdit")){
-    $id = filter_input(INPUT_POST, "btnEdit");
-    if(filter_has_var(INPUT_POST, "btnConfirmEdit")){
-        $newReview = filter_input(INPUT_POST, "txtaNewReview");
-        $newScore = filter_input(INPUT_POST, "newScore");
+if(filter_has_var(INPUT_POST, "btnConfirmEdit")){
+    $id = filter_input(INPUT_POST, "btnConfirmEdit");
+    $newReview = filter_input(INPUT_POST, "txtaNewReview");
+    $newScore = filter_input(INPUT_POST, "newScore");
+    if(empty($newReview) || $newScore == ""){
+        $_SESSION["msgEditReview"] = "<h4>Veuillez compléter tous les champs</h4>";
+    }
+    else{       
         UpdateReview($newReview, $newScore, $id);
     }
 }
@@ -1236,8 +1337,12 @@ if(filter_has_var(INPUT_POST, "btnDelete")){
 
 // ===== Recherche =====
 if(filter_has_var(INPUT_POST, "btnSearch")){
-    $search = filter_input(INPUT_POST, "tbxSearch");
-    $_SESSION["search"] = $search;
+    $searchTitle = filter_input(INPUT_POST, "tbxSearchTitle");
+    $searchAuthor = filter_input(INPUT_POST, "tbxSearchAuthor");
+    $searchEditor = filter_input(INPUT_POST, "tbxSearchEditor");
+    $_SESSION["searchTitle"] = "%".$searchTitle."%";
+    $_SESSION["searchAuthor"] = "%".$searchAuthor."%";
+    $_SESSION["searchEditor"] = "%".$searchEditor."%";
     FindedForm();
 }
 
@@ -1251,7 +1356,9 @@ if(filter_has_var(INPUT_POST, "sortBooks")){
 
 // ===== Annule les filtres =====
 if(filter_has_var(INPUT_POST, "btnResetFilter")){
-    $_SESSION["search"] = null;
+    $_SESSION["searchTitle"] = null;
+    $_SESSION["searchAuthor"] = null;
+    $_SESSION["searchEditor"] = null;
     $_SESSION["sortBooks"] = null;
 }
 
@@ -1259,14 +1366,21 @@ if(filter_has_var(INPUT_POST, "btnResetFilter")){
 if(filter_has_var(INPUT_POST, "btnFavori")){
     $favBook = $_POST["btnFavori"];
     $pseudo = $_SESSION["StockedNickname"];
-    AddToFavList($pseudo, $favBook);
+    if(!IsAlreadyInFavList($pseudo, $favBook)){
+        if(AddToFavList($pseudo, $favBook)){
+            $_SESSION["msgFav"] = "<h4>Le livre a été ajouté à votre bibliothèque !</h4>";
+        }
+    }
+    else{
+        $_SESSION["msgFav"] = "<h4>Ce livre est déjà dans votre bibliothèque !</h4>";
+    }
 }
 
 // ===== Suppression d'un livre de la bibliothèque =====
 if(filter_has_var(INPUT_POST, "btnDeleteLink")){
     $favBook = $_POST["btnDeleteLink"];
     $pseudo = $_SESSION["StockedNickname"];
-    DeleteToFavList($pseudo, $favBook);
+    DeleteToFavList($favBook, $pseudo);
 }
 
 // ===== Ajout d'un livre dans le site (admin) =====
@@ -1277,13 +1391,18 @@ if(filter_has_var(INPUT_POST, "btnAddBook")){
     $summary = filter_input(INPUT_POST, "txtaSummary");
     $isbn = filter_input(INPUT_POST, "tbxIsbn");
     $editionDate = filter_input(INPUT_POST, "tbxEditionDate");
-    $img = $_FILES['img']['name'][0];
-    if(AddBook($title, $author, $editor, $summary, $isbn, $editionDate, $img)){
-        MoveUpdatedFile();
-        $_SESSION["msgAddBook"] = "<h4>Le livre a été ajouté !</h4>";
+    $img = $_FILES['img']['name'][0];    
+    if(!empty($title) && !empty($author) && !empty($editor) && !empty($summary) && !empty($isbn) && !empty($editionDate) && $_FILES['img']['name'][0] != ""){
+        if(AddBook($title, $author, $editor, $summary, $isbn, $editionDate, $img)){
+            MoveUpdatedFile();
+            $_SESSION["msgAddBook"] = "<h4>Le livre a été ajouté !</h4>";
+        }
+        else{
+            $_SESSION["msgAddBook"] = "<h4>Un problème est survenu, Veillez à ce que les champs soient tous remplis !</h4>";
+        }
     }
     else{
-        $_SESSION["msgAddBook"] = "<h4>Un problème est survenu, Veillez à ce que les champs soient tous remplis !</h4>";
+        $_SESSION["msgAddBook"] = "<h4>Le formulaire est incomplet !</h4>";
     }
 }
 

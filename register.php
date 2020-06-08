@@ -1,10 +1,11 @@
-<!-- ==========================================
+<?php
+// ==========================================
 // Charneco Samuel
 // 25.05.2020
 // Version 1.0
 // Site de critique de livres
-// ========================================== -->
-<?php
+// ==========================================
+
     if(session_status() == PHP_SESSION_NONE){
         session_start(); 
     }
@@ -30,6 +31,7 @@
             <input type="password" name="tbxRegisterPassword" placeholder="Entrez un mot de passe">
             <label>Confirmer mot de passe</label>
             <input type="password" name="tbxRegisterConfirmPassword" placeholder="Confirmez le mot de passe">
+            <h4>Pour une meilleur sécurité du mot de passe, mélangez : lettres, chiffres et caractère spéciaux !</h4>
             <input type="submit" name="btnRegister" value="S'enregistrer">
             <a href="login.php">se connecter</a>
             <?php

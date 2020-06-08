@@ -42,7 +42,7 @@ CREATE TABLE `books` (
 
 LOCK TABLES `books` WRITE;
 /*!40000 ALTER TABLE `books` DISABLE KEYS */;
-INSERT INTO `books` VALUES ('9782070339822','L\'Å’uvre','Emile Zola','Henri Mitterand','Une histoire qui parle des problÃ¨mes de peinture sous le Second Empire','2006-09-07','LOeuvre.jpg'),('9782070359400','La Joie de vivre','Emile Zola','Henri Mitterand','Une histoire dans un village normand','2008-06-19','LaJoieDeVivre.jpg'),('9782070372225','L\'Argent','Emile Zola','Henri Mitterand','Un livre qui parle d\'argent','1980-09-12','LArgent.jpg'),('9782070399673','Son Excellence EugÃ¨ne Rougon','Emile Zola','Henri Mitterand','C\'est l\'histoire d\'un Empereur mÃ©chant surnommÃ© Rougon','2009-04-01','SonExcellenceEugeneRougon.jpg'),('9782070411429','Germinal','Emile Zola','Henri Mitterand','Un livre qui dÃ©crit les conditions de travail de l\'Ã©poque.','1999-09-14','Germinal.jpg'),('9782070414659','William Shakespeare','Victor Hugo','Michel Crouzet','Un livre parlant de William Shakespeare.','2018-11-22','WilliamShakespeare.jpg'),('9782072864537','Notre-Dame de Paris','Victor Hugo','Benedikte Andersson','Une magnifique histoire qui se passe Ã  Paris','2019-04-23','NotreDameDeParis.jpg');
+INSERT INTO `books` VALUES ('9782070339822','L\'Å’uvre','Emile Zola','Henri Mitterand','Une histoire qui parle des problÃ¨mes de peinture sous le Second Empire. salut','2006-09-07','LOeuvre.jpg'),('9782070359400','La Joie de vivre','Emile Zola','Henri Mitterand','Une histoire dans un village normand','2008-06-19','LaJoieDeVivre.jpg'),('9782070372225','L\'Argent','Emile Zola','Henri Mitterand','Un livre qui parle d\'argent','1980-09-12','LArgent.jpg'),('9782070399673','Son Excellence EugÃ¨ne Rougon','Emile Zola','Henri Mitterand','C\'est l\'histoire d\'un Empereur mÃ©chant surnommÃ© Rougon','2009-04-01','SonExcellenceEugeneRougon.jpg'),('9782070411429','Germinal','Emile Zola','Henri Mitterand','Un livre qui dÃ©crit les conditions de travail de l\'Ã©poque.','1999-09-14','Germinal.jpg'),('9782070414659','William Shakespeare','Victor Hugo','Michel Crouzet','Un livre parlant de William Shakespeare.','2018-11-22','WilliamShakespeare.jpg'),('9782072864537','Notre-Dame de Paris','Victor Hugo','Benedikte Andersson','Une magnifique histoire qui se passe Ã  Paris','2019-04-23','NotreDameDeParis.jpg');
 /*!40000 ALTER TABLE `books` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -65,8 +65,8 @@ CREATE TABLE `reviews` (
   KEY `fk_reviews_books_idx` (`isbn`),
   KEY `fk_reviews_users1_idx` (`pseudo`),
   CONSTRAINT `fk_reviews_books` FOREIGN KEY (`isbn`) REFERENCES `books` (`isbn`) ON DELETE NO ACTION ON UPDATE NO ACTION,
-  CONSTRAINT `fk_reviews_users1` FOREIGN KEY (`pseudo`) REFERENCES `users` (`pseudo`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8;
+  CONSTRAINT `fk_reviews_users1` FOREIGN KEY (`pseudo`) REFERENCES `users` (`pseudo`) ON DELETE NO ACTION ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -75,7 +75,7 @@ CREATE TABLE `reviews` (
 
 LOCK TABLES `reviews` WRITE;
 /*!40000 ALTER TABLE `reviews` DISABLE KEYS */;
-INSERT INTO `reviews` VALUES (4,'2020-05-29','TÃ¢che Ã  faire :\r\n - Bouton favori Ã  enlever d\'index et mettre ici !',4,1,'9782070339822','Hello'),(5,'2020-06-02','Bonjour ',4,1,'9782070359400','Hello');
+INSERT INTO `reviews` VALUES (16,'2020-06-08','J\'ai beaucoup aimÃ© ce livre. L\'histoire est belle. il est pas facile Ã  lire, mais il vaut le coup. Je vous le conseille vivement !',5,1,'9782070411429','Hello'),(17,'2020-06-08','Super livre, j\'adore !',4,0,'9782070339822','Hello');
 /*!40000 ALTER TABLE `reviews` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -102,7 +102,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES ('Hello','a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3','Hello@gmail.com',0),('Salut','a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3','Salut@gmail.com',0);
+INSERT INTO `users` VALUES ('admin','bb04ac64a846ce106b859fbfb48c70b52e53a20fc1fb40e952269548ee45b0b8','admin@admin.ch',1),('Hello','bb04ac64a846ce106b859fbfb48c70b52e53a20fc1fb40e952269548ee45b0b8','Hello@gmail.com',0);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -120,7 +120,7 @@ CREATE TABLE `users_has_books` (
   KEY `fk_users_has_books_books1_idx` (`isbn`),
   KEY `fk_users_has_books_users1_idx` (`pseudo`),
   CONSTRAINT `fk_users_has_books_books1` FOREIGN KEY (`isbn`) REFERENCES `books` (`isbn`) ON DELETE NO ACTION ON UPDATE NO ACTION,
-  CONSTRAINT `fk_users_has_books_users1` FOREIGN KEY (`pseudo`) REFERENCES `users` (`pseudo`) ON DELETE NO ACTION ON UPDATE NO ACTION
+  CONSTRAINT `fk_users_has_books_users1` FOREIGN KEY (`pseudo`) REFERENCES `users` (`pseudo`) ON DELETE NO ACTION ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -142,4 +142,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2020-06-02 10:46:50
+-- Dump completed on 2020-06-08 16:57:35

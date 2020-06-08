@@ -1,10 +1,11 @@
-<!-- ==========================================
+<?php
+// ==========================================
 // Charneco Samuel
 // 25.05.2020
 // Version 1.0
 // Site de critique de livres
-// ========================================== -->
-<?php
+// ==========================================
+
     if(session_status() == PHP_SESSION_NONE){
         session_start(); 
     }
@@ -41,14 +42,13 @@
                 </div>
             </div>
         </nav>
-        <h1>Accueil</h1>
-        <form method="POST">
-            <input type="search" name="tbxSearch" placeholder="Rechercher un titre, auteur ou editeur">
-            <input type="submit" name="btnSearch" value="Rechercher">
-            <input type="submit" name="btnResetFilter" value="Retirer filtre">
-        </form>      
+        <h1>Accueil</h1>        
         <?php
-            if(isset($_SESSION["search"])){
+            echo SearchForm();
+
+            if(isset($_SESSION["msgSearch"])){ echo $_SESSION["msgSearch"]; }
+
+            if(isset($_SESSION["searchTitle"]) || isset($_SESSION["searchAuthor"]) || isset($_SESSION["searchEditor"])){
                 echo FindedForm();
             }
             else{
