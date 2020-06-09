@@ -704,38 +704,39 @@ function GetNotValidReview(){
  * Retourne de l'HTML
  */
 function ShowNotValidReview(){
-    $notValidReview = GetNotValidReview();
+    $notValidReview = GetNotValidReview();   
     $review = null;
     foreach ($notValidReview as $key => $value) {
-        if(filter_has_var(INPUT_POST, "btnEdit") && filter_input(INPUT_POST, "btnEdit") == $value["idReview"]){
+        if(filter_has_var(INPUT_POST, "btnEdit") && filter_input(INPUT_POST, "btnEdit") == $value["idReview"]){   
             $review .= <<<EX
-            <div class="UserReview">
-                <h3><a href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a></h3>
-                <form method="POST">
-                    <textarea name="txtaNewReview">{$value["content"]}</textarea>
-                    <select name="newScore">
-                        <option value="">--</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                        <option value="5">5</option>
-                    </select>
-                    <button type="submit" name="btnConfirmEdit" value={$value['idReview']}>Mettre à jour</button>
-                </form>
-            </div>         
-EX;       
+                <div class="UserReview">
+                    <h3><a href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a></h3>
+                    <form method="POST">
+                        <textarea name="txtaNewReview">{$value["content"]}</textarea>
+                        <select name="newScore">
+                            <option value="">{$value['mark']}</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                        <button type="submit" name="btnConfirmEdit" value={$value['idReview']}>Mettre à jour</button>
+                    </form>
+                </div>              
+EX;
         }
         else{
             $review .= <<<EX
-            <div class="UserReview">
-                <h3><a href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a></h3>
-                <form method="POST">
-                    <button name="btnEdit" value={$value['idReview']}>Modifier</button>
-                    <button name="btnDelete" value={$value['idReview']}>Supprimer</button>
-                </form>
-                <p>{$value["content"]}</p>
-            </div>
+        <div class="UserReview">
+            <h3><a href="bookDetail.php?id={$value['isbn']}">{$value['title']}</a></h3>
+            <form method="POST">
+                <button name="btnEdit" value={$value['idReview']}>Modifier</button>
+                <button name="btnDelete" value={$value['idReview']}>Supprimer</button>
+            </form>
+            <label class="reviewMark"><b>Note : </b>{$value['mark']}</label>
+            <p>{$value["content"]}</p>
+        </div>
 EX;
         }
     }
